@@ -3,135 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SRV-MSK-04 | TERMINAL</title>
+    <title>SRV-04 // TERMINAL</title>
     <style>
-        :root { --main-color: #0f0; --error-color: #f00; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--main-color); font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+        :root { --neon-green: #00ff41; --neon-red: #ff003c; --bg-dark: #050505; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg-dark); color: var(--neon-green); font-family: 'Courier New', monospace; overflow: hidden; }
 
-        /* Фоновый слой с картинкой */
-        #bg-image {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(0,10,0,0.85), rgba(0,10,0,0.85)), 
-                        url('https://files.catbox.moe/urdziz.png');
-            background-size: cover; background-position: center;
-            z-index: -1;
-        }
-
-        #matrix-canvas { position: fixed; top: 0; left: 0; z-index: 0; opacity: 0.4; }
+        /* Эффект сетки и сканирующей линии */
+        .viewport { position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%; z-index: 5; pointer-events: none; }
+        
+        .grid { position: fixed; top: 0; left: 0; width: 200%; height: 200%; 
+            background-image: linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px), 
+                              linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px; transform: perspective(500px) rotateX(60deg) translateY(-50%);
+            animation: moveGrid 20s linear infinite; z-index: -1; }
+        @keyframes moveGrid { from { transform: perspective(500px) rotateX(60deg) translateY(-50%); } to { transform: perspective(500px) rotateX(60deg) translateY(0%); } }
 
         .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; box-sizing: border-box; }
-        .terminal-box { border: 1px solid var(--main-color); padding: 25px; background: rgba(0, 0, 0, 0.85); box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); width: 100%; max-width: 400px; text-align: center; backdrop-filter: blur(5px); }
+        .terminal-box { border: 2px solid var(--neon-green); background: rgba(0, 0, 0, 0.9); padding: 30px; box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); width: 100%; max-width: 400px; }
 
-        input { background: transparent; border: 1px solid var(--main-color); color: var(--main-color); padding: 15px; font-size: 1.2rem; width: 100%; box-sizing: border-box; outline: none; margin-top: 20px; text-align: center; }
-        button { background: var(--main-color); color: #000; border: none; padding: 18px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; text-transform: uppercase; letter-spacing: 2px; }
+        input { background: transparent; border: 1px solid var(--neon-green); color: var(--neon-green); padding: 15px; width: 100%; box-sizing: border-box; outline: none; margin: 20px 0; font-size: 1.2rem; text-align: center; }
+        button { background: var(--neon-green); color: #000; border: none; padding: 18px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
 
-        .radar { width: 80px; height: 80px; border: 2px solid var(--main-color); border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; margin: 20px auto; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .radar-circle { width: 100px; height: 100px; border: 2px solid var(--neon-green); border-radius: 50%; position: relative; margin: 20px auto; }
+        .radar-sweep { width: 50%; height: 50%; background: linear-gradient(45deg, var(--neon-green), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: sweep 1.5s linear infinite; }
+        @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Эффект глитча при ошибке */
-        .glitch-shake { animation: shake 0.2s infinite; border-color: var(--error-color) !important; color: var(--error-color) !important; box-shadow: 0 0 30px rgba(255, 0, 0, 0.5) !important; }
-        @keyframes shake { 0% { transform: translate(0); } 25% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } 75% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
-
-        #log-content { text-align: left; font-size: 0.8rem; min-height: 100px; margin-top: 15px; }
-        .log-line { margin-bottom: 5px; opacity: 0; animation: fadeIn 0.3s forwards; }
-        @keyframes fadeIn { to { opacity: 1; } }
+        #log-screen { text-align: left; font-size: 0.8rem; height: 120px; overflow: hidden; margin-top: 15px; line-height: 1.4; }
+        .error-theme { border-color: var(--neon-red) !important; color: var(--neon-red) !important; box-shadow: 0 0 30px rgba(255, 0, 60, 0.4) !important; }
+        .blink { animation: blinker 0.1s step-end infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
-    <div id="bg-image"></div>
-    <canvas id="matrix-canvas"></canvas>
+    <div class="viewport"></div>
+    <div class="grid"></div>
 
     <div class="container">
-        <div id="screen-input" class="terminal-box">
-            <h1 style="font-size: 1.1rem;">[ SECURE_CORE_v.4.1 ]</h1>
-            <p style="font-size: 0.7rem; color: #888;">ИДЕНТИФИКАЦИЯ ОБЪЕКТА В ГЛОБАЛЬНОМ РЕЕСТРЕ</p>
+        <div id="box-auth" class="terminal-box">
+            <h1 style="font-size: 1rem;">[ SRV-04 // SECURITY GATE ]</h1>
+            <p style="font-size: 0.7rem; opacity: 0.7;">IDENT_TOKEN: REQUIRED</p>
             <input type="number" id="inn-field" placeholder="ВВЕДИТЕ ИНН">
-            <button onclick="startProcess()">ИНИЦИИРОВАТЬ АУДИТ</button>
+            <button onclick="startAudit()">ИНИЦИИРОВАТЬ АУДИТ</button>
         </div>
 
-        <div id="screen-scan" class="terminal-box" style="display: none;">
+        <div id="box-scan" class="terminal-box" style="display: none;">
             <h1>[ SCANNING... ]</h1>
-            <div class="radar"></div>
-            <div id="status-text" style="font-size: 0.8rem;">ПОДГОТОВКА ШЛЮЗА...</div>
+            <div class="radar-circle"><div class="radar-sweep"></div></div>
+            <div id="status-text" style="font-size: 0.7rem;">ПЕРЕХВАТ ПАКЕТОВ...</div>
         </div>
 
-        <div id="screen-result" class="terminal-box" style="display: none;">
-            <h1 style="color: var(--error-color);">[ ⚠ КРИТИЧЕСКИЙ СТАТУС ]</h1>
-            <div id="log-content"></div>
-            <button onclick="exitToBot()" style="background: var(--error-color); color: #fff;">ВЕРНУТЬСЯ В ГЕЙТ</button>
+        <div id="box-result" class="terminal-box" style="display: none;">
+            <h1 style="color: var(--neon-red);">[ ⚠ КРИТИЧЕСКИЙ СБОЙ ]</h1>
+            <div id="log-screen"></div>
+            <button onclick="closeApp()" style="background: var(--neon-red); color: #fff; margin-top: 15px;">ВЕРНУТЬСЯ В ГЕЙТ</button>
         </div>
     </div>
 
     <script>
-        // Matrix Effect
-        const canvas = document.getElementById('matrix-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.height = window.innerHeight; canvas.width = window.innerWidth;
-        const chars = "0101010101ABCDEF";
-        const fontSize = 14; const columns = canvas.width / fontSize;
-        const drops = Array(Math.floor(columns)).fill(1);
-        function drawMatrix() {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.05)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#0f0"; ctx.font = fontSize + "px monospace";
-            for (let i = 0; i < drops.length; i++) {
-                const text = chars[Math.floor(Math.random() * chars.length)];
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                drops[i]++;
-            }
-        }
-        setInterval(drawMatrix, 50);
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Развернуть на весь экран
 
-        // Логика процесса
-        async function startProcess() {
+        async function startAudit() {
             const inn = document.getElementById('inn-field').value;
-            if (inn.length < 10) return alert("ОШИБКА: НЕДОСТАТОЧНО ДАННЫХ");
+            if (inn.length < 10) return alert("ОШИБКА: ДАННЫЕ НЕПОЛНЫЕ");
 
-            document.getElementById('screen-input').style.display = 'none';
-            document.getElementById('screen-scan').style.display = 'block';
+            // Вибрация: Начало процесса
+            tg.HapticFeedback.impactOccurred('medium');
+
+            document.getElementById('box-auth').style.display = 'none';
+            document.getElementById('box-scan').style.display = 'block';
 
             const steps = [
-                "УСТАНОВКА SSH-ТУННЕЛЯ...",
-                "ОБХОД СИСТЕМЫ 'АНТИ-ФРОД'...",
-                "ЗАПРОС К РЕЕСТРУ БЛОКИРОВОК...",
-                "ПРОВЕРКА СЧЕТОВ ОБЪЕКТА...",
-                "ФИНАЛИЗАЦИЯ ОТЧЕТА..."
+                "DECRYPTING MSK-GATE-04...",
+                "BYPASSING FNS-FIREWALL...",
+                "ACCESSING REE_LOCK_DATABASE...",
+                "EXTRACTING ENTITY_DATA...",
+                "SYNCING WITH KORDON-V.4..."
             ];
 
             for (let step of steps) {
                 document.getElementById('status-text').innerText = step;
-                await new Promise(r => setTimeout(r, 1800)); // Задержка шага
+                tg.HapticFeedback.selectionChanged(); // Легкая вибрация на каждом шаге
+                await new Promise(r => setTimeout(r, 1600));
             }
 
-            showFinal(inn);
+            showError(inn);
         }
 
-        async function showFinal(inn) {
-            document.getElementById('screen-scan').style.display = 'none';
-            const res = document.getElementById('screen-result');
-            res.style.display = 'block';
-            res.classList.add('glitch-shake');
+        async function showError(inn) {
+            // Вибрация: КРИТИЧЕСКАЯ ОШИБКА (три мощных удара)
+            tg.HapticFeedback.notificationOccurred('error');
 
-            const logBox = document.getElementById('log-content');
+            document.getElementById('box-scan').style.display = 'none';
+            const res = document.getElementById('box-result');
+            res.style.display = 'block';
+            res.classList.add('error-theme');
+
+            const logScreen = document.getElementById('log-screen');
             const lines = [
-                `> ОБЪЕКТ: ID-${inn}`,
-                `> РИСК: МАКСИМАЛЬНЫЙ (9.8/10)`,
-                `> СТАТУС: ПОДГОТОВКА К БЛОКИРОВКЕ`,
-                `> ДЕЙСТВИЕ: ТРЕБУЕТСЯ ВМЕШАТЕЛЬСТВО`
+                `> ИНН: ${inn}`,
+                `> СТАТУС: КРИТИЧЕСКИЙ РИСК`,
+                `> БАЗА «КОРДОН»: ЗАПРЕТ ВЫЕЗДА`,
+                `> БАЗА «ФНС»: БЛОКИРОВКА СЧЕТОВ`,
+                `> SYNC_LOOP: АКТИВИРОВАН`
             ];
 
             for (let line of lines) {
-                const div = document.createElement('div');
-                div.className = 'log-line';
-                div.innerText = line;
-                logBox.appendChild(div);
-                await new Promise(r => setTimeout(r, 600)); // Эффект печати
+                const p = document.createElement('div');
+                p.style.marginBottom = "5px";
+                p.innerText = line;
+                logScreen.appendChild(p);
+                await new Promise(r => setTimeout(r, 500));
             }
         }
 
-        function exitToBot() {
-            const tg = window.Telegram.WebApp;
-            tg.close(); // Просто закрываем и возвращаем в чат
+        function closeApp() {
+            tg.HapticFeedback.impactOccurred('light');
+            tg.close();
         }
     </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
