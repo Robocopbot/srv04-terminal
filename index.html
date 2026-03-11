@@ -5,67 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SRV-MSK-04 | TERMINAL</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: #0f0; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
-        
-        /* Исправленный фон */
+        :root { --main-color: #0f0; --error-color: #f00; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--main-color); font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+
+        /* Фоновый слой с картинкой */
         #bg-image {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('https://files.catbox.moe/urdziz.png');
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(0,10,0,0.85), rgba(0,10,0,0.85)), 
+                        url('https://files.catbox.moe/urdziz.png');
             background-size: cover; background-position: center;
-            opacity: 0.3; /* Прозрачность фона для видимости текста */
-            z-index: -2;
+            z-index: -1;
         }
 
-        #matrix-canvas { position: absolute; top: 0; left: 0; z-index: -1; }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 10, 0, 0.7); z-index: 0; }
+        #matrix-canvas { position: fixed; top: 0; left: 0; z-index: 0; opacity: 0.4; }
 
-        .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; }
-        .terminal-box { border: 1px solid #0f0; padding: 30px; background: rgba(0, 0, 0, 0.9); box-shadow: 0 0 20px #0f0; max-width: 400px; width: 90%; }
+        .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; box-sizing: border-box; }
+        .terminal-box { border: 1px solid var(--main-color); padding: 25px; background: rgba(0, 0, 0, 0.85); box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); width: 100%; max-width: 400px; text-align: center; backdrop-filter: blur(5px); }
 
-        h1 { font-size: 1.2rem; margin-bottom: 20px; text-shadow: 0 0 5px #0f0; }
-        input { background: transparent; border: 1px solid #0f0; color: #0f0; padding: 12px; font-size: 1.1rem; width: 100%; box-sizing: border-box; outline: none; margin-bottom: 20px; text-align: center; }
-        button { background: #0f0; color: #000; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; width: 100%; }
+        input { background: transparent; border: 1px solid var(--main-color); color: var(--main-color); padding: 15px; font-size: 1.2rem; width: 100%; box-sizing: border-box; outline: none; margin-top: 20px; text-align: center; }
+        button { background: var(--main-color); color: #000; border: none; padding: 18px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; text-transform: uppercase; letter-spacing: 2px; }
 
-        #scanner { display: none; }
-        .radar { width: 100px; height: 100px; border: 2px solid #0f0; border-radius: 50%; border-top: 2px solid transparent; animation: spin 0.8s linear infinite; margin: 20px auto; }
+        .radar { width: 80px; height: 80px; border: 2px solid var(--main-color); border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        #result { display: none; color: #f00; border-color: #f00; box-shadow: 0 0 20px #f00; }
-        .log-line { margin: 5px 0; font-size: 0.85rem; text-align: left; }
+        /* Эффект глитча при ошибке */
+        .glitch-shake { animation: shake 0.2s infinite; border-color: var(--error-color) !important; color: var(--error-color) !important; box-shadow: 0 0 30px rgba(255, 0, 0, 0.5) !important; }
+        @keyframes shake { 0% { transform: translate(0); } 25% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } 75% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
+
+        #log-content { text-align: left; font-size: 0.8rem; min-height: 100px; margin-top: 15px; }
+        .log-line { margin-bottom: 5px; opacity: 0; animation: fadeIn 0.3s forwards; }
+        @keyframes fadeIn { to { opacity: 1; } }
     </style>
 </head>
 <body>
     <div id="bg-image"></div>
     <canvas id="matrix-canvas"></canvas>
-    <div class="overlay"></div>
 
     <div class="container">
-        <div id="input-screen" class="terminal-box">
-            <h1>[ SYSTEM ACCESS ]</h1>
-            <input type="number" id="inn-input" placeholder="ВВЕДИТЕ ИНН">
-            <button onclick="runAudit()">НАЧАТЬ СКАН</button>
+        <div id="screen-input" class="terminal-box">
+            <h1 style="font-size: 1.1rem;">[ SECURE_CORE_v.4.1 ]</h1>
+            <p style="font-size: 0.7rem; color: #888;">ИДЕНТИФИКАЦИЯ ОБЪЕКТА В ГЛОБАЛЬНОМ РЕЕСТРЕ</p>
+            <input type="number" id="inn-field" placeholder="ВВЕДИТЕ ИНН">
+            <button onclick="startProcess()">ИНИЦИИРОВАТЬ АУДИТ</button>
         </div>
 
-        <div id="scanner" class="terminal-box">
-            <h1 id="status-title">[ ПРОВЕРКА... ]</h1>
+        <div id="screen-scan" class="terminal-box" style="display: none;">
+            <h1>[ SCANNING... ]</h1>
             <div class="radar"></div>
-            <div id="progress-text" style="font-size: 0.8rem;">ИНИЦИАЛИЗАЦИЯ ШЛЮЗА...</div>
+            <div id="status-text" style="font-size: 0.8rem;">ПОДГОТОВКА ШЛЮЗА...</div>
         </div>
 
-        <div id="result" class="terminal-box">
-            <h1 style="color: #f00;">[ КРИТИЧЕСКИЙ СБОЙ ]</h1>
+        <div id="screen-result" class="terminal-box" style="display: none;">
+            <h1 style="color: var(--error-color);">[ ⚠ КРИТИЧЕСКИЙ СТАТУС ]</h1>
             <div id="log-content"></div>
-            <br>
-            <button onclick="contactEngineer()" style="background: #f00; color: #fff;">СВЯЗЬ С ИНЖЕНЕРОМ</button>
+            <button onclick="exitToBot()" style="background: var(--error-color); color: #fff;">ВЕРНУТЬСЯ В ГЕЙТ</button>
         </div>
     </div>
 
     <script>
-        // Matrix Rain
+        // Matrix Effect
         const canvas = document.getElementById('matrix-canvas');
         const ctx = canvas.getContext('2d');
         canvas.height = window.innerHeight; canvas.width = window.innerWidth;
-        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const chars = "0101010101ABCDEF";
         const fontSize = 14; const columns = canvas.width / fontSize;
         const drops = Array(Math.floor(columns)).fill(1);
         function drawMatrix() {
@@ -78,57 +80,58 @@
                 drops[i]++;
             }
         }
-        setInterval(drawMatrix, 40);
+        setInterval(drawMatrix, 50);
 
-        // Логика затянутого сканирования
-        function runAudit() {
-            const inn = document.getElementById('inn-input').value;
-            if (inn.length < 10) return alert("ОШИБКА ИНН");
+        // Логика процесса
+        async function startProcess() {
+            const inn = document.getElementById('inn-field').value;
+            if (inn.length < 10) return alert("ОШИБКА: НЕДОСТАТОЧНО ДАННЫХ");
 
-            document.getElementById('input-screen').style.display = 'none';
-            document.getElementById('scanner').style.display = 'block';
+            document.getElementById('screen-input').style.display = 'none';
+            document.getElementById('screen-scan').style.display = 'block';
 
             const steps = [
-                "ПОДКЛЮЧЕНИЕ К СЕРВЕРАМ ФНС...",
-                "ОБХОД ФАЙРВОЛА 'КОРДОН'...",
-                "ИЗВЛЕЧЕНИЕ ДАННЫХ ПО ОБЪЕКТУ...",
-                "СИНХРОНИЗАЦИЯ С РЕЕСТРОМ ЕРВУ...",
-                "АНАЛИЗ ТРАНЗАКЦИОННЫХ СВЯЗЕЙ...",
-                "ФОРМИРОВАНИЕ ОТЧЕТА ОБ ОШИБКАХ..."
+                "УСТАНОВКА SSH-ТУННЕЛЯ...",
+                "ОБХОД СИСТЕМЫ 'АНТИ-ФРОД'...",
+                "ЗАПРОС К РЕЕСТРУ БЛОКИРОВОК...",
+                "ПРОВЕРКА СЧЕТОВ ОБЪЕКТА...",
+                "ФИНАЛИЗАЦИЯ ОТЧЕТА..."
             ];
 
-            let i = 0;
-            const interval = setInterval(() => {
-                document.getElementById('progress-text').innerText = steps[i];
-                i++;
-                if (i >= steps.length) {
-                    clearInterval(interval);
-                    setTimeout(() => showResult(inn), 1000);
-                }
-            }, 2000); // Каждый шаг длится 2 секунды
+            for (let step of steps) {
+                document.getElementById('status-text').innerText = step;
+                await new Promise(r => setTimeout(r, 1800)); // Задержка шага
+            }
+
+            showFinal(inn);
         }
 
-        function showResult(inn) {
-            document.getElementById('scanner').style.display = 'none';
-            document.getElementById('result').style.display = 'block';
-            const logContent = document.getElementById('log-content');
+        async function showFinal(inn) {
+            document.getElementById('screen-scan').style.display = 'none';
+            const res = document.getElementById('screen-result');
+            res.style.display = 'block';
+            res.classList.add('glitch-shake');
+
+            const logBox = document.getElementById('log-content');
             const lines = [
-                `> ОБЪЕКТ: ${inn}`,
-                `> СТАТУС: ПОД НАБЛЮДЕНИЕМ`,
-                `> ВЫЯВЛЕНО: 12 НЕСООТВЕТСТВИЙ`,
-                `> РЕКОМЕНДАЦИЯ: СРОЧНАЯ КОРРЕКЦИЯ`
+                `> ОБЪЕКТ: ID-${inn}`,
+                `> РИСК: МАКСИМАЛЬНЫЙ (9.8/10)`,
+                `> СТАТУС: ПОДГОТОВКА К БЛОКИРОВКЕ`,
+                `> ДЕЙСТВИЕ: ТРЕБУЕТСЯ ВМЕШАТЕЛЬСТВО`
             ];
-            lines.forEach(l => {
-                const d = document.createElement('div'); d.className = 'log-line';
-                d.innerText = l; logContent.appendChild(d);
-            });
+
+            for (let line of lines) {
+                const div = document.createElement('div');
+                div.className = 'log-line';
+                div.innerText = line;
+                logBox.appendChild(div);
+                await new Promise(r => setTimeout(r, 600)); // Эффект печати
+            }
         }
 
-        function contactEngineer() {
+        function exitToBot() {
             const tg = window.Telegram.WebApp;
-            // ЗАМЕНИТЕ 'USERNAME' НА ВАШ НИК БЕЗ @
-            tg.openTelegramLink("https://t.me/USERNAME");
-            tg.close();
+            tg.close(); // Просто закрываем и возвращаем в чат
         }
     </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
