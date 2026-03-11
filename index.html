@@ -3,229 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SRV-04 // DEEP OSINT HUD</title>
+    <title>SRV-04 // AUDIT TERMINAL</title>
     <style>
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
         * { box-sizing: border-box; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; user-select: none; }
 
-        /* Эффект старого монитора (CRT & Scanlines) */
+        /* Эффект CRT монитора */
         .crt::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 100; background-size: 100% 2px, 3px 100%; pointer-events: none; }
-        .crt { animation: textShadow 1.6s infinite; }
-        @keyframes textShadow { 0% { text-shadow: 0.43px 0 1px rgba(0,30,255,0.5), -0.43px 0 1px rgba(255,0,80,0.3), 0 0 3px; } 100% { text-shadow: 0.43px 0 1px rgba(0,30,255,0.5), -0.43px 0 1px rgba(255,0,80,0.3), 0 0 3px; } }
-
-        /* Матрица на фоне */
+        
         #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.35; }
 
-        /* HUD Виджеты */
         .hud-widget { position: absolute; z-index: 10; font-size: 0.65rem; border: 1px solid rgba(0,255,65,0.3); background: rgba(0,0,0,0.8); padding: 10px; width: 180px; box-shadow: inset 0 0 10px rgba(0,255,65,0.1); display: none; }
         @media (min-width: 600px) { .hud-widget { display: block; } } 
         #hud-left { top: 20px; left: 20px; height: calc(100vh - 40px); }
         #hud-right { top: 20px; right: 20px; height: calc(100vh - 40px); }
-        .hud-title { border-bottom: 1px solid var(--main); margin-bottom: 5px; padding-bottom: 3px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .hud-title { border-bottom: 1px solid var(--main); margin-bottom: 5px; padding-bottom: 3px; font-weight: bold; text-transform: uppercase; }
         .hud-line { margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Центральный терминал */
         .container { position: relative; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
-        .terminal-core { border: 2px solid var(--main); background: rgba(0, 5, 0, 0.9); padding: 30px 20px; box-shadow: 0 0 30px rgba(0, 255, 65, 0.2); width: 100%; max-width: 380px; text-align: center; position: relative; }
-        .terminal-core::after { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; border: 1px solid rgba(0,255,65,0.5); z-index: -1; filter: blur(4px); }
+        .terminal-core { border: 2px solid var(--main); background: rgba(0, 5, 0, 0.95); padding: 30px 20px; box-shadow: 0 0 30px rgba(0, 255, 65, 0.2); width: 100%; max-width: 380px; text-align: center; }
 
-        h1 { font-size: 1.2rem; margin: 0 0 15px 0; letter-spacing: 3px; text-shadow: 0 0 10px var(--main); }
-        .subtitle { font-size: 0.7rem; color: #555; margin-bottom: 20px; letter-spacing: 1px; }
-
-        input { background: rgba(0,255,65,0.05); border: 1px solid var(--main); color: var(--main); padding: 15px; width: 100%; margin-bottom: 20px; font-size: 1.3rem; text-align: center; outline: none; transition: 0.3s; box-shadow: inset 0 0 5px rgba(0,255,65,0.2); font-family: 'Courier New', monospace; letter-spacing: 2px; }
-        input:focus { background: rgba(0,255,65,0.1); box-shadow: inset 0 0 15px rgba(0,255,65,0.5); }
+        h1 { font-size: 1.1rem; margin: 0 0 15px 0; letter-spacing: 2px; text-shadow: 0 0 10px var(--main); }
+        input { background: rgba(0,255,65,0.05); border: 1px solid var(--main); color: var(--main); padding: 15px; width: 100%; margin-bottom: 20px; font-size: 1.2rem; text-align: center; outline: none; font-family: 'Courier New', monospace; }
         
-        button { background: var(--main); color: #000; border: none; padding: 16px; width: 100%; font-weight: bold; font-size: 1rem; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; box-shadow: 0 0 15px rgba(0,255,65,0.4); transition: 0.2s; font-family: 'Courier New', monospace; }
-        button:active { transform: scale(0.98); background: #fff; box-shadow: 0 0 25px #fff; }
+        button { background: var(--main); color: #000; border: none; padding: 16px; width: 100%; font-weight: bold; font-size: 0.9rem; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; font-family: 'Courier New', monospace; }
+        button:active { transform: scale(0.98); background: #fff; }
 
-        /* Радар сканирования */
-        .radar-box { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 20px 0; }
-        .radar { width: 120px; height: 120px; border: 2px solid rgba(0,255,65,0.5); border-radius: 50%; position: relative; overflow: hidden; background: repeating-radial-gradient(rgba(0,255,65,0.1), rgba(0,255,65,0.1) 5px, transparent 6px, transparent 15px); }
-        .radar::before { content: ''; position: absolute; top: 50%; left: 0; width: 100%; border-top: 1px solid rgba(0,255,65,0.3); }
-        .radar::after { content: ''; position: absolute; top: 0; left: 50%; height: 100%; border-left: 1px solid rgba(0,255,65,0.3); }
+        .radar { width: 100px; height: 100px; border: 2px solid rgba(0,255,65,0.5); border-radius: 50%; position: relative; margin: 20px auto; overflow: hidden; }
         .sweep { width: 50%; height: 50%; background: linear-gradient(to right, rgba(0,255,65,1), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 2s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .target { width: 6px; height: 6px; background: #fff; border-radius: 50%; position: absolute; box-shadow: 0 0 10px #fff; animation: ping 2s infinite; }
-        @keyframes ping { 0%, 100% { opacity: 0; transform: scale(0.5); } 50% { opacity: 1; transform: scale(1.5); } }
 
-        /* Логи результатов */
-        #log-output { text-align: left; font-size: 0.85rem; line-height: 1.6; min-height: 150px; margin-top: 10px; }
-        .log-row { border-bottom: 1px solid rgba(0,255,65,0.1); padding: 4px 0; opacity: 0; animation: fadeIn 0.1s forwards; }
-        @keyframes fadeIn { to { opacity: 1; } }
-
-        /* Состояние ошибки */
+        #log-output { text-align: left; font-size: 0.8rem; line-height: 1.6; min-height: 160px; margin-top: 10px; }
+        .log-row { border-bottom: 1px solid rgba(0,255,65,0.1); padding: 4px 0; }
+        
         .alert-mode { border-color: var(--alert) !important; box-shadow: 0 0 40px rgba(255,0,60,0.5) !important; color: var(--alert) !important; }
-        .alert-mode input { border-color: var(--alert); color: var(--alert); background: rgba(255,0,60,0.05); box-shadow: inset 0 0 10px rgba(255,0,60,0.2); }
-        .alert-text { font-weight: bold; animation: strobe 0.5s infinite; text-shadow: 0 0 10px var(--alert); }
-        @keyframes strobe { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        .alert-text { font-weight: bold; animation: strobe 0.6s infinite; }
+        @keyframes strobe { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 <body class="crt">
     <canvas id="matrix-bg"></canvas>
 
     <div id="hud-left" class="hud-widget">
-        <div class="hud-title">LIVE TRAFFIC INTERCEPT</div>
+        <div class="hud-title">INTERCEPT_LIVE</div>
         <div id="hud-data-left"></div>
     </div>
 
     <div id="hud-right" class="hud-widget">
-        <div class="hud-title">ACTIVE NODES</div>
+        <div class="hud-title">NODES_ACTIVE</div>
         <div id="hud-data-right"></div>
     </div>
 
     <div class="container">
         <div id="ui-input" class="terminal-core">
-            <h1>[ SRV-MSK-04 ]</h1>
-            <div class="subtitle">GLOBAL OSINT IDENTIFICATION</div>
-            <input type="text" id="target-inn" placeholder="ИНН ОБЪЕКТА" inputmode="numeric" maxlength="12" autocomplete="off">
-            <button onclick="executeScan()">ЗАПУСК АУДИТА</button>
+            <h1>[ SRV-MSK-CENTER-04 ]</h1>
+            <div style="font-size: 0.6rem; margin-bottom: 15px; color: #555;">AI AUDIT CORE V.3 // SECURE ACCESS</div>
+            <input type="text" id="target-inn" placeholder="ВВЕДИТЕ ИНН" inputmode="numeric" maxlength="12">
+            <button onclick="executeScan()">📊 ИНИЦИИРОВАТЬ АУДИТ</button>
         </div>
 
         <div id="ui-scan" class="terminal-core" style="display: none;">
-            <h1>[ PROCESSING ]</h1>
-            <div class="radar-box">
-                <div class="radar">
-                    <div class="sweep"></div>
-                    <div class="target" style="top: 30px; left: 80px; animation-delay: 0.5s;"></div>
-                    <div class="target" style="top: 80px; left: 40px; animation-delay: 1.2s;"></div>
-                </div>
-            </div>
-            <div id="scan-status" style="font-size: 0.8rem; letter-spacing: 1px;">INITIALIZING...</div>
+            <h1>[ СКАНЕР АКТИВЕН ]</h1>
+            <div class="radar"><div class="sweep"></div></div>
+            <div id="scan-status" style="font-size: 0.7rem; letter-spacing: 1px;">INITIALIZING...</div>
         </div>
 
         <div id="ui-result" class="terminal-core" style="display: none;">
-            <h1 class="alert-text">[ SYSTEM ALERT ]</h1>
+            <h1 class="alert-text">[ ВНИМАНИЕ: RED STATUS ]</h1>
             <div id="log-output"></div>
-            <div class="alert-text" style="margin-top: 15px; font-size: 1rem;">SYNC LOCKOUT IN: 04:18:12</div>
-            <button onclick="terminateSession()" style="background: var(--alert); color: #fff; margin-top: 15px; box-shadow: 0 0 15px var(--alert);">СВЯЗЬ С ОПЕРАТОРОМ</button>
+            <div style="font-size: 0.7rem; color: var(--alert); margin-top: 10px; border-top: 1px solid var(--alert); padding-top: 5px;">
+                ⚡️ ОПЦИЯ SYNC-LOOP: ДОСТУПНА (ТРЕБУЕТСЯ КОД)
+            </div>
+            <button onclick="terminateSession()" style="background: var(--alert); color: #fff; margin-top: 15px;">⚡️ ЗАПРОСИТЬ КОД SYNC-LOOP</button>
         </div>
     </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // --- 1. ЧТЕНИЕ И РАСШИФРОВКА PAYLOAD ИЗ БОТА ---
+        // --- ПАРСИНГ ДАННЫХ ИЗ БОТА ---
         const urlParams = new URLSearchParams(window.location.search);
-        const innFromBot = urlParams.get('inn') || "НЕИЗВЕСТНО";
+        const innFromBot = urlParams.get('inn') || "SYSTEM_ID";
         const payloadB64 = urlParams.get('p');
-        
-        let osintData = { org: "ОБЪЕКТ НЕ ОПРЕДЕЛЕН", ceo: "Н/Д", status: "ТРЕБУЕТСЯ ПРОВЕРКА" };
+        let osintData = { org: "ДАННЫЕ ЗАШИФРОВАНЫ", ceo: "АНАЛИЗ...", status: "РИСК БЛОКИРОВКИ: 89%" };
         
         if (payloadB64) {
             try {
                 const decodedStr = decodeURIComponent(escape(window.atob(payloadB64)));
                 osintData = JSON.parse(decodedStr);
-            } catch (e) { console.error("Crypto-Payload Error"); }
+            } catch (e) { console.log("Payload decryption fail"); }
         }
 
-        // --- 2. MATRIX RAIN LOGIC ---
+        // --- MATRIX RAIN ---
         const canvas = document.getElementById('matrix-bg');
         const ctx = canvas.getContext('2d');
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
-        const letters = '010101010101010101ABCDEFHIJKLMNOPQRSTUVWXYZ!@#$%^&*'.split('');
+        let width = canvas.width = window.innerWidth, height = canvas.height = window.innerHeight;
+        const letters = '010101ABCDEF'.split('');
         const fontSize = 14;
         let drops = Array(Math.floor(width / fontSize)).fill(1);
 
         function drawMatrix() {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
             ctx.fillRect(0, 0, width, height);
-            ctx.fillStyle = '#0F0';
+            ctx.fillStyle = ctx.fillStyle === '#ff003c' ? '#ff003c' : '#0F0';
             ctx.font = fontSize + 'px monospace';
             for (let i = 0; i < drops.length; i++) {
-                const text = letters[Math.floor(Math.random() * letters.length)];
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                if (drops[i] * fontSize > height && Math.random() > 0.975) drops[i] = 0;
+                ctx.fillText(letters[Math.floor(Math.random()*letters.length)], i*fontSize, drops[i]*fontSize);
+                if (drops[i]*fontSize > height && Math.random() > 0.975) drops[i] = 0;
                 drops[i]++;
             }
         }
-        setInterval(drawMatrix, 33);
-        window.onresize = () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; };
+        let matrixInterval = setInterval(drawMatrix, 33);
 
-        // --- 3. HUD WIDGETS GENERATOR ---
-        function randomHex(len) { return [...Array(len)].map(() => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase(); }
-        function randomIP() { return `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.XXX`; }
-        
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) { tg.expand(); tg.ready(); }
+
+        // --- HUD GENERATOR ---
         setInterval(() => {
-            const left = document.getElementById('hud-data-left');
-            if(left) {
-                const div = document.createElement('div'); div.className = 'hud-line';
-                div.innerText = `> TX: 0x${randomHex(8)}... OK`;
-                left.prepend(div); if(left.children.length > 25) left.removeChild(left.lastChild);
-            }
-            const right = document.getElementById('hud-data-right');
-            if(right) {
-                const div = document.createElement('div'); div.className = 'hud-line';
-                div.innerText = `[${randomIP()}] PING: ${Math.floor(Math.random()*50+10)}ms`;
-                right.prepend(div); if(right.children.length > 25) right.removeChild(right.lastChild);
-            }
-        }, 800);
+            const l = document.getElementById('hud-data-left'), r = document.getElementById('hud-data-right');
+            if(l) { const d = document.createElement('div'); d.className='hud-line'; d.innerText=`> ADDR: 0x${Math.random().toString(16).slice(2,8).toUpperCase()}`; l.prepend(d); if(l.children.length>20) l.lastChild.remove(); }
+            if(r) { const d = document.createElement('div'); d.className='hud-line'; d.innerText=`NODE_${Math.floor(Math.random()*999)}: ONLINE`; r.prepend(d); if(r.children.length>20) r.lastChild.remove(); }
+        }, 1000);
 
-        // --- 4. TELEGRAM API WRAPPER ---
-        const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
-        if (tg) { try { tg.expand(); tg.ready(); } catch(e){} }
-
-        // --- 5. CORE LOGIC ---
+        // --- CORE LOGIC ---
         async function executeScan() {
-            const inn = innFromBot !== "НЕИЗВЕСТНО" ? innFromBot : document.getElementById('target-inn').value.trim();
-            if (inn.length < 10) return; 
-
+            const inn = innFromBot !== "SYSTEM_ID" ? innFromBot : document.getElementById('target-inn').value.trim();
+            if (inn.length < 10) return;
             if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
 
             document.getElementById('ui-input').style.display = 'none';
             document.getElementById('ui-scan').style.display = 'block';
 
             const statusNode = document.getElementById('scan-status');
-            const sequence = [
+            const steps = [
                 "ESTABLISHING SECURE TUNNEL...",
-                `QUERYING KORDON-DB FOR [${inn}]...`,
+                `QUERYING KORDON-DB [ID: ${inn}]...`,
                 "DECRYPTING TARGET METADATA...",
                 `MATCHING CEO: ${osintData.ceo}...`,
-                "ANALYZING FINANCIAL TRAILS..."
+                "FINALIZING STATUS REPORT..."
             ];
 
-            for (let step of sequence) {
-                statusNode.innerText = step;
+            for (let s of steps) {
+                statusNode.innerText = s;
                 if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-                await new Promise(r => setTimeout(r, 1400));
+                await new Promise(r => setTimeout(r, 1500));
             }
-
             renderResult(inn);
         }
 
         async function renderResult(inn) {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-
             document.getElementById('ui-scan').style.display = 'none';
-            const resultBox = document.getElementById('ui-result');
-            resultBox.style.display = 'block';
-            resultBox.classList.add('alert-mode'); 
+            const resBox = document.getElementById('ui-result');
+            resBox.style.display = 'block';
+            resBox.classList.add('alert-mode');
 
-            // Красная Матрица
-            setInterval(() => { ctx.fillStyle = '#F00'; }, 33);
+            // Переключаем матрицу в красный
+            clearInterval(matrixInterval);
+            matrixInterval = setInterval(() => { ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,width,height); ctx.fillStyle='#F00'; ctx.font=fontSize+'px monospace'; drops.forEach((d,i)=>{ ctx.fillText(letters[Math.floor(Math.random()*letters.length)],i*fontSize,d*fontSize); if(d*fontSize>height&&Math.random()>0.975)drops[i]=0; drops[i]++; }); }, 33);
 
-            const logScreen = document.getElementById('log-output');
+            const log = document.getElementById('log-output');
             const lines = [
                 `> TARGET ID: ${inn}`,
                 `> ОРГАНИЗАЦИЯ: ${osintData.org}`,
-                `> РУКОВОДСТВО: ${osintData.ceo}`,
-                `> [РЕЕСТР ФНС]: СЧЕТА ЗАБЛОКИРОВАНЫ`,
-                `> УГРОЗА: ${osintData.status}`,
-                `> ДЕЙСТВИЕ: СИНХРОНИЗАЦИЯ С ОПЕРАТОРОМ`
+                `> РЕЙТИНГ: КРИТИЧЕСКИЙ (🔴 RED)`,
+                `> СТАТУС: ПОДГОТОВКА К ОГРАНИЧЕНИЮ`,
+                `> АЛЕРТ: ${osintData.status}`,
+                `> SYNC-LOOP: PAUSE (ДОСТУПНО)`,
+                `> ДЕЙСТВИЕ: ТРЕБУЕТСЯ КОД ИНЖЕНЕРА`
             ];
 
-            for (let text of lines) {
-                const div = document.createElement('div');
-                div.className = 'log-row';
-                div.innerText = text;
-                logScreen.appendChild(div);
-                await new Promise(r => setTimeout(r, 700)); 
+            for (let t of lines) {
+                const div = document.createElement('div'); div.className = 'log-row'; div.innerText = t;
+                log.appendChild(div);
+                await new Promise(r => setTimeout(r, 700));
             }
         }
 
-        function terminateSession() {
-            if (tg) { tg.close(); } else { alert('Откройте в Telegram для связи с оператором.'); }
-        }
+        function terminateSession() { if (tg) tg.close(); else alert("Код Sync-Loop запрашивается в Telegram чате бота."); }
     </script>
 </body>
 </html>
