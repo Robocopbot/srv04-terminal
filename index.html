@@ -17,9 +17,9 @@
         /* Матрица на фоне */
         #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.35; }
 
-        /* HUD Виджеты (Иллюзия работы) */
+        /* HUD Виджеты */
         .hud-widget { position: absolute; z-index: 10; font-size: 0.65rem; border: 1px solid rgba(0,255,65,0.3); background: rgba(0,0,0,0.8); padding: 10px; width: 180px; box-shadow: inset 0 0 10px rgba(0,255,65,0.1); display: none; }
-        @media (min-width: 600px) { .hud-widget { display: block; } } /* Показываем на широких экранах */
+        @media (min-width: 600px) { .hud-widget { display: block; } } 
         #hud-left { top: 20px; left: 20px; height: calc(100vh - 40px); }
         #hud-right { top: 20px; right: 20px; height: calc(100vh - 40px); }
         .hud-title { border-bottom: 1px solid var(--main); margin-bottom: 5px; padding-bottom: 3px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
@@ -102,17 +102,30 @@
         </div>
     </div>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // --- 1. MATRIX RAIN LOGIC ---
+        // --- 1. ЧТЕНИЕ И РАСШИФРОВКА PAYLOAD ИЗ БОТА ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const innFromBot = urlParams.get('inn') || "НЕИЗВЕСТНО";
+        const payloadB64 = urlParams.get('p');
+        
+        let osintData = { org: "ОБЪЕКТ НЕ ОПРЕДЕЛЕН", ceo: "Н/Д", status: "ТРЕБУЕТСЯ ПРОВЕРКА" };
+        
+        if (payloadB64) {
+            try {
+                const decodedStr = decodeURIComponent(escape(window.atob(payloadB64)));
+                osintData = JSON.parse(decodedStr);
+            } catch (e) { console.error("Crypto-Payload Error"); }
+        }
+
+        // --- 2. MATRIX RAIN LOGIC ---
         const canvas = document.getElementById('matrix-bg');
         const ctx = canvas.getContext('2d');
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
         const letters = '010101010101010101ABCDEFHIJKLMNOPQRSTUVWXYZ!@#$%^&*'.split('');
         const fontSize = 14;
-        let columns = width / fontSize;
-        let drops = [];
-        for (let x = 0; x < columns; x++) drops[x] = 1;
+        let drops = Array(Math.floor(width / fontSize)).fill(1);
 
         function drawMatrix() {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
@@ -129,7 +142,7 @@
         setInterval(drawMatrix, 33);
         window.onresize = () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; };
 
-        // --- 2. HUD WIDGETS GENERATOR ---
+        // --- 3. HUD WIDGETS GENERATOR ---
         function randomHex(len) { return [...Array(len)].map(() => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase(); }
         function randomIP() { return `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.XXX`; }
         
@@ -148,14 +161,14 @@
             }
         }, 800);
 
-        // --- 3. TELEGRAM API WRAPPER ---
+        // --- 4. TELEGRAM API WRAPPER ---
         const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
         if (tg) { try { tg.expand(); tg.ready(); } catch(e){} }
 
-        // --- 4. CORE LOGIC ---
+        // --- 5. CORE LOGIC ---
         async function executeScan() {
-            const inn = document.getElementById('target-inn').value.trim();
-            if (inn.length < 10) return; // Молча блокируем пустой ввод без дурацких алертов
+            const inn = innFromBot !== "НЕИЗВЕСТНО" ? innFromBot : document.getElementById('target-inn').value.trim();
+            if (inn.length < 10) return; 
 
             if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
 
@@ -165,17 +178,16 @@
             const statusNode = document.getElementById('scan-status');
             const sequence = [
                 "ESTABLISHING SECURE TUNNEL...",
-                "BYPASSING FNS-GATEWAY [PROXY-7]...",
-                "QUERYING KORDON-DB...",
-                "ANALYZING FINANCIAL TRAILS...",
-                "MATCHING IDENTIFIERS...",
-                "COMPILING REPORT..."
+                `QUERYING KORDON-DB FOR [${inn}]...`,
+                "DECRYPTING TARGET METADATA...",
+                `MATCHING CEO: ${osintData.ceo}...`,
+                "ANALYZING FINANCIAL TRAILS..."
             ];
 
             for (let step of sequence) {
                 statusNode.innerText = step;
                 if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-                await new Promise(r => setTimeout(r, 1200));
+                await new Promise(r => setTimeout(r, 1400));
             }
 
             renderResult(inn);
@@ -187,21 +199,19 @@
             document.getElementById('ui-scan').style.display = 'none';
             const resultBox = document.getElementById('ui-result');
             resultBox.style.display = 'block';
-            resultBox.classList.add('alert-mode'); // Красим всё в красный
+            resultBox.classList.add('alert-mode'); 
 
-            // Красим Матрицу в красный
-            ctx.fillStyle = '#F00'; 
-            const originalDraw = drawMatrix;
+            // Красная Матрица
             setInterval(() => { ctx.fillStyle = '#F00'; }, 33);
 
             const logScreen = document.getElementById('log-output');
             const lines = [
                 `> TARGET ID: ${inn}`,
-                `> SYSTEM_MATCH: 99.8%`,
+                `> ОРГАНИЗАЦИЯ: ${osintData.org}`,
+                `> РУКОВОДСТВО: ${osintData.ceo}`,
                 `> [РЕЕСТР ФНС]: СЧЕТА ЗАБЛОКИРОВАНЫ`,
-                `> [БАЗА КОРДОН]: ЗАПРЕТ ПЕРЕМЕЩЕНИЯ`,
-                `> УГРОЗА: КРИТИЧЕСКИЙ УРОВЕНЬ РИСКА`,
-                `> ДЕЙСТВИЕ: ТРЕБУЕТСЯ СИНХРОНИЗАЦИЯ`
+                `> УГРОЗА: ${osintData.status}`,
+                `> ДЕЙСТВИЕ: СИНХРОНИЗАЦИЯ С ОПЕРАТОРОМ`
             ];
 
             for (let text of lines) {
@@ -209,7 +219,7 @@
                 div.className = 'log-row';
                 div.innerText = text;
                 logScreen.appendChild(div);
-                await new Promise(r => setTimeout(r, 700)); // Плавный вывод
+                await new Promise(r => setTimeout(r, 700)); 
             }
         }
 
