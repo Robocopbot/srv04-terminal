@@ -8,7 +8,7 @@
         :root { --neon-green: #00ff41; --neon-red: #ff003c; --bg-dark: #050505; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg-dark); color: var(--neon-green); font-family: 'Courier New', monospace; overflow: hidden; }
 
-        /* Эффект сетки и сканирующей линии */
+        /* Эффект сетки */
         .viewport { position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
                         linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
@@ -31,10 +31,8 @@
         .radar-sweep { width: 50%; height: 50%; background: linear-gradient(45deg, var(--neon-green), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: sweep 1.5s linear infinite; }
         @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        #log-screen { text-align: left; font-size: 0.8rem; height: 120px; overflow: hidden; margin-top: 15px; line-height: 1.4; }
+        #log-screen { text-align: left; font-size: 0.8rem; height: 130px; overflow: hidden; margin-top: 15px; line-height: 1.4; }
         .error-theme { border-color: var(--neon-red) !important; color: var(--neon-red) !important; box-shadow: 0 0 30px rgba(255, 0, 60, 0.4) !important; }
-        .blink { animation: blinker 0.1s step-end infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
     </style>
 </head>
 <body>
@@ -43,59 +41,65 @@
 
     <div class="container">
         <div id="box-auth" class="terminal-box">
-            <h1 style="font-size: 1rem;">[ SRV-04 // SECURITY GATE ]</h1>
-            <p style="font-size: 0.7rem; opacity: 0.7;">IDENT_TOKEN: REQUIRED</p>
-            <input type="number" id="inn-field" placeholder="ВВЕДИТЕ ИНН">
-            <button onclick="startAudit()">ИНИЦИИРОВАТЬ АУДИТ</button>
+            <h1>[ SRV-04 // SECURITY ]</h1>
+            <p style="font-size: 0.7rem; opacity: 0.7;">ENTER IDENT_TOKEN (INN)</p>
+            <input type="number" id="inn-field" placeholder="XXXXXXXXXX">
+            <button onclick="startAudit()">ИНИЦИИРОВАТЬ СКАН</button>
         </div>
 
         <div id="box-scan" class="terminal-box" style="display: none;">
             <h1>[ SCANNING... ]</h1>
             <div class="radar-circle"><div class="radar-sweep"></div></div>
-            <div id="status-text" style="font-size: 0.7rem;">ПЕРЕХВАТ ПАКЕТОВ...</div>
+            <div id="status-text" style="font-size: 0.7rem;">ПОДКЛЮЧЕНИЕ К УЗЛУ ЕРВУ...</div>
         </div>
 
         <div id="box-result" class="terminal-box" style="display: none;">
-            <h1 style="color: var(--neon-red);">[ ⚠ КРИТИЧЕСКИЙ СБОЙ ]</h1>
+            <h1 style="color: var(--neon-red);">[ ⚠ ATTENTION ]</h1>
             <div id="log-screen"></div>
             <button onclick="closeApp()" style="background: var(--neon-red); color: #fff; margin-top: 15px;">ВЕРНУТЬСЯ В ГЕЙТ</button>
         </div>
     </div>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на весь экран
+        // Инициализация Telegram API с проверкой
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) {
+            tg.expand();
+            tg.ready();
+        }
 
         async function startAudit() {
             const inn = document.getElementById('inn-field').value;
-            if (inn.length < 10) return alert("ОШИБКА: ДАННЫЕ НЕПОЛНЫЕ");
+            if (inn.length < 10) return alert("ОШИБКА: НЕДОСТАТОЧНО ДАННЫХ");
 
-            // Вибрация: Начало процесса
-            tg.HapticFeedback.impactOccurred('medium');
+            // Вибрация (только в Telegram)
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
 
             document.getElementById('box-auth').style.display = 'none';
             document.getElementById('box-scan').style.display = 'block';
 
             const steps = [
-                "DECRYPTING MSK-GATE-04...",
-                "BYPASSING FNS-FIREWALL...",
-                "ACCESSING REE_LOCK_DATABASE...",
-                "EXTRACTING ENTITY_DATA...",
-                "SYNCING WITH KORDON-V.4..."
+                "ПЕРЕХВАТ ПАКЕТОВ MSK-GATE-04...",
+                "ДОСТУП К РЕГИСТРАМ ЕРВУ ПОЛУЧЕН.",
+                "АНАЛИЗ ЦИФРОВОГО СЛЕДА...",
+                "ПРОВЕРКА БАЗЫ «КОРДОН»...",
+                "ЗАПРОС К РЕЕСТРУ БЛОКИРОВОК ФНС..."
             ];
 
             for (let step of steps) {
                 document.getElementById('status-text').innerText = step;
-                tg.HapticFeedback.selectionChanged(); // Легкая вибрация на каждом шаге
-                await new Promise(r => setTimeout(r, 1600));
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+                await new Promise(r => setTimeout(r, 1800));
             }
 
-            showError(inn);
+            showFinal(inn);
         }
 
-        async function showError(inn) {
-            // Вибрация: КРИТИЧЕСКАЯ ОШИБКА (три мощных удара)
-            tg.HapticFeedback.notificationOccurred('error');
+        async function showFinal(inn) {
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
 
             document.getElementById('box-scan').style.display = 'none';
             const res = document.getElementById('box-result');
@@ -103,12 +107,13 @@
             res.classList.add('error-theme');
 
             const logScreen = document.getElementById('log-screen');
+            const region = inn.substring(0, 2);
             const lines = [
-                `> ИНН: ${inn}`,
-                `> СТАТУС: КРИТИЧЕСКИЙ РИСК`,
-                `> БАЗА «КОРДОН»: ЗАПРЕТ ВЫЕЗДА`,
-                `> БАЗА «ФНС»: БЛОКИРОВКА СЧЕТОВ`,
-                `> SYNC_LOOP: АКТИВИРОВАН`
+                `> ОБЪЕКТ: ID-${inn}`,
+                `> РЕГИОН: ${region}-RUS`,
+                `> КОРДОН: 🔴 ЗАПРЕТ_ВЫЕЗДА`,
+                `> ФНС: 🔴 БЛОКИРОВКА_СЧЕТОВ`,
+                `> СТАТУС: КРИТИЧЕСКИЙ РИСК`
             ];
 
             for (let line of lines) {
@@ -116,15 +121,17 @@
                 p.style.marginBottom = "5px";
                 p.innerText = line;
                 logScreen.appendChild(p);
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 600));
             }
         }
 
         function closeApp() {
-            tg.HapticFeedback.impactOccurred('light');
-            tg.close();
+            if (tg) {
+                tg.close();
+            } else {
+                alert("Окно будет закрыто в приложении Telegram");
+            }
         }
     </script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
 </html>
