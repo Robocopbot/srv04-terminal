@@ -3,184 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SRV-04 // AUDIT TERMINAL</title>
+    <title>SRV-04 // TERMINAL</title>
     <style>
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
-        * { box-sizing: border-box; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; user-select: none; }
-
-        /* Эффект CRT монитора */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; user-select: none; }
         .crt::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 100; background-size: 100% 2px, 3px 100%; pointer-events: none; }
-        
         #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.35; }
-
-        .hud-widget { position: absolute; z-index: 10; font-size: 0.65rem; border: 1px solid rgba(0,255,65,0.3); background: rgba(0,0,0,0.8); padding: 10px; width: 180px; box-shadow: inset 0 0 10px rgba(0,255,65,0.1); display: none; }
-        @media (min-width: 600px) { .hud-widget { display: block; } } 
-        #hud-left { top: 20px; left: 20px; height: calc(100vh - 40px); }
-        #hud-right { top: 20px; right: 20px; height: calc(100vh - 40px); }
-        .hud-title { border-bottom: 1px solid var(--main); margin-bottom: 5px; padding-bottom: 3px; font-weight: bold; text-transform: uppercase; }
-        .hud-line { margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        .container { position: relative; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
-        .terminal-core { border: 2px solid var(--main); background: rgba(0, 5, 0, 0.95); padding: 30px 20px; box-shadow: 0 0 30px rgba(0, 255, 65, 0.2); width: 100%; max-width: 380px; text-align: center; }
-
-        h1 { font-size: 1.1rem; margin: 0 0 15px 0; letter-spacing: 2px; text-shadow: 0 0 10px var(--main); }
-        input { background: rgba(0,255,65,0.05); border: 1px solid var(--main); color: var(--main); padding: 15px; width: 100%; margin-bottom: 20px; font-size: 1.2rem; text-align: center; outline: none; font-family: 'Courier New', monospace; }
-        
-        button { background: var(--main); color: #000; border: none; padding: 16px; width: 100%; font-weight: bold; font-size: 0.9rem; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; font-family: 'Courier New', monospace; }
-        button:active { transform: scale(0.98); background: #fff; }
-
-        .radar { width: 100px; height: 100px; border: 2px solid rgba(0,255,65,0.5); border-radius: 50%; position: relative; margin: 20px auto; overflow: hidden; }
-        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, rgba(0,255,65,1), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 2s linear infinite; }
+        .container { position: relative; z-index: 20; display: flex; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
+        .terminal { border: 2px solid var(--main); background: rgba(0, 5, 0, 0.95); padding: 30px 20px; width: 100%; max-width: 380px; text-align: center; }
+        .radar { width: 100px; height: 100px; border: 2px solid var(--main); border-radius: 50%; position: relative; margin: 20px auto; overflow: hidden; }
+        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 2s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        #log-output { text-align: left; font-size: 0.8rem; line-height: 1.6; min-height: 160px; margin-top: 10px; }
-        .log-row { border-bottom: 1px solid rgba(0,255,65,0.1); padding: 4px 0; }
-        
-        .alert-mode { border-color: var(--alert) !important; box-shadow: 0 0 40px rgba(255,0,60,0.5) !important; color: var(--alert) !important; }
-        .alert-text { font-weight: bold; animation: strobe 0.6s infinite; }
-        @keyframes strobe { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        #log { text-align: left; font-size: 0.8rem; line-height: 1.5; min-height: 150px; }
+        .alert { border-color: var(--alert) !important; color: var(--alert) !important; box-shadow: 0 0 30px rgba(255,0,0,0.3); }
+        button { background: var(--main); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; font-family: 'Courier New', monospace; }
     </style>
 </head>
 <body class="crt">
     <canvas id="matrix-bg"></canvas>
-
-    <div id="hud-left" class="hud-widget">
-        <div class="hud-title">INTERCEPT_LIVE</div>
-        <div id="hud-data-left"></div>
-    </div>
-
-    <div id="hud-right" class="hud-widget">
-        <div class="hud-title">NODES_ACTIVE</div>
-        <div id="hud-data-right"></div>
-    </div>
-
     <div class="container">
-        <div id="ui-input" class="terminal-core">
-            <h1>[ SRV-MSK-CENTER-04 ]</h1>
-            <div style="font-size: 0.6rem; margin-bottom: 15px; color: #555;">AI AUDIT CORE V.3 // SECURE ACCESS</div>
-            <input type="text" id="target-inn" placeholder="ВВЕДИТЕ ИНН" inputmode="numeric" maxlength="12">
-            <button onclick="executeScan()">📊 ИНИЦИИРОВАТЬ АУДИТ</button>
-        </div>
-
-        <div id="ui-scan" class="terminal-core" style="display: none;">
-            <h1>[ СКАНЕР АКТИВЕН ]</h1>
-            <div class="radar"><div class="sweep"></div></div>
-            <div id="scan-status" style="font-size: 0.7rem; letter-spacing: 1px;">INITIALIZING...</div>
-        </div>
-
-        <div id="ui-result" class="terminal-core" style="display: none;">
-            <h1 class="alert-text">[ ВНИМАНИЕ: RED STATUS ]</h1>
-            <div id="log-output"></div>
-            <div style="font-size: 0.7rem; color: var(--alert); margin-top: 10px; border-top: 1px solid var(--alert); padding-top: 5px;">
-                ⚡️ ОПЦИЯ SYNC-LOOP: ДОСТУПНА (ТРЕБУЕТСЯ КОД)
-            </div>
-            <button onclick="terminateSession()" style="background: var(--alert); color: #fff; margin-top: 15px;">⚡️ ЗАПРОСИТЬ КОД SYNC-LOOP</button>
+        <div id="ui-main" class="terminal">
+            <h1 id="head">[ SYSTEM_SCAN ]</h1>
+            <div id="ui-radar" class="radar"><div class="sweep"></div></div>
+            <div id="status">INITIALIZING...</div>
+            <div id="log" style="display:none;"></div>
+            <button id="btn" style="display:none;" onclick="window.Telegram.WebApp.close()">[ ВЫХОД ]</button>
         </div>
     </div>
-
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // --- ПАРСИНГ ДАННЫХ ИЗ БОТА ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const innFromBot = urlParams.get('inn') || "SYSTEM_ID";
-        const payloadB64 = urlParams.get('p');
-        let osintData = { org: "ДАННЫЕ ЗАШИФРОВАНЫ", ceo: "АНАЛИЗ...", status: "РИСК БЛОКИРОВКИ: 89%" };
-        
-        if (payloadB64) {
+        const canvas = document.getElementById('matrix-bg'), ctx = canvas.getContext('2d');
+        let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
+        let letters = '01ABCDEF'.split(''), fontSize = 14, drops = Array(Math.floor(w/fontSize)).fill(1);
+        let matrixClr = '#0F0';
+        function draw() {
+            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,w,h);
+            ctx.fillStyle = matrixClr; ctx.font = fontSize+'px monospace';
+            drops.forEach((y, i) => {
+                ctx.fillText(letters[Math.floor(Math.random()*letters.length)], i*fontSize, y*fontSize);
+                if (y*fontSize > h && Math.random() > 0.975) drops[i] = 0; drops[i]++;
+            });
+        }
+        setInterval(draw, 33);
+
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('q');
+        let osint = { org: "HIDDEN", ceo: "HIDDEN", status: "CRITICAL" };
+        let inn = "UNKNOWN";
+
+        if(q) {
             try {
-                const decodedStr = decodeURIComponent(escape(window.atob(payloadB64)));
-                osintData = JSON.parse(decodedStr);
-            } catch (e) { console.log("Payload decryption fail"); }
+                const decoded = atob(q);
+                const p = new URLSearchParams(decoded);
+                inn = p.get('inn');
+                osint = JSON.parse(atob(p.get('p')));
+            } catch(e) {}
         }
 
-        // --- MATRIX RAIN ---
-        const canvas = document.getElementById('matrix-bg');
-        const ctx = canvas.getContext('2d');
-        let width = canvas.width = window.innerWidth, height = canvas.height = window.innerHeight;
-        const letters = '010101ABCDEF'.split('');
-        const fontSize = 14;
-        let drops = Array(Math.floor(width / fontSize)).fill(1);
-
-        function drawMatrix() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-            ctx.fillRect(0, 0, width, height);
-            ctx.fillStyle = ctx.fillStyle === '#ff003c' ? '#ff003c' : '#0F0';
-            ctx.font = fontSize + 'px monospace';
-            for (let i = 0; i < drops.length; i++) {
-                ctx.fillText(letters[Math.floor(Math.random()*letters.length)], i*fontSize, drops[i]*fontSize);
-                if (drops[i]*fontSize > height && Math.random() > 0.975) drops[i] = 0;
-                drops[i]++;
-            }
-        }
-        let matrixInterval = setInterval(drawMatrix, 33);
-
-        const tg = window.Telegram ? window.Telegram.WebApp : null;
-        if (tg) { tg.expand(); tg.ready(); }
-
-        // --- HUD GENERATOR ---
-        setInterval(() => {
-            const l = document.getElementById('hud-data-left'), r = document.getElementById('hud-data-right');
-            if(l) { const d = document.createElement('div'); d.className='hud-line'; d.innerText=`> ADDR: 0x${Math.random().toString(16).slice(2,8).toUpperCase()}`; l.prepend(d); if(l.children.length>20) l.lastChild.remove(); }
-            if(r) { const d = document.createElement('div'); d.className='hud-line'; d.innerText=`NODE_${Math.floor(Math.random()*999)}: ONLINE`; r.prepend(d); if(r.children.length>20) r.lastChild.remove(); }
-        }, 1000);
-
-        // --- CORE LOGIC ---
-        async function executeScan() {
-            const inn = innFromBot !== "SYSTEM_ID" ? innFromBot : document.getElementById('target-inn').value.trim();
-            if (inn.length < 10) return;
-            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-
-            document.getElementById('ui-input').style.display = 'none';
-            document.getElementById('ui-scan').style.display = 'block';
-
-            const statusNode = document.getElementById('scan-status');
-            const steps = [
-                "ESTABLISHING SECURE TUNNEL...",
-                `QUERYING KORDON-DB [ID: ${inn}]...`,
-                "DECRYPTING TARGET METADATA...",
-                `MATCHING CEO: ${osintData.ceo}...`,
-                "FINALIZING STATUS REPORT..."
-            ];
-
-            for (let s of steps) {
-                statusNode.innerText = s;
-                if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        setTimeout(async () => {
+            const steps = ["CONNECTING...", "QUERYING DB...", `CEO_MATCH: ${osint.ceo}`, "FINALIZING..."];
+            for(let s of steps) {
+                document.getElementById('status').innerText = s;
                 await new Promise(r => setTimeout(r, 1500));
             }
-            renderResult(inn);
+            showResult();
+        }, 500);
+
+        function showResult() {
+            matrixClr = '#F00';
+            document.getElementById('ui-radar').style.display = 'none';
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('head').innerText = '[ RED_STATUS ]';
+            document.getElementById('ui-main').classList.add('alert');
+            const log = document.getElementById('log'); log.style.display = 'block';
+            const lines = [`> TARGET: ${inn}`, `> ORG: ${osint.org}`, `> STATUS: CRITICAL_RED`, `> .....................`, `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ`, `> ЧТОБЫ РЕШИТЬ ПРОБЛЕМУ` ];
+            lines.forEach((t, i) => setTimeout(() => { const d = document.createElement('div'); d.innerText = t; log.appendChild(d); }, i*600));
+            setTimeout(() => { document.getElementById('btn').style.display = 'block'; }, 4000);
         }
-
-        async function renderResult(inn) {
-            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-            document.getElementById('ui-scan').style.display = 'none';
-            const resBox = document.getElementById('ui-result');
-            resBox.style.display = 'block';
-            resBox.classList.add('alert-mode');
-
-            // Переключаем матрицу в красный
-            clearInterval(matrixInterval);
-            matrixInterval = setInterval(() => { ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,width,height); ctx.fillStyle='#F00'; ctx.font=fontSize+'px monospace'; drops.forEach((d,i)=>{ ctx.fillText(letters[Math.floor(Math.random()*letters.length)],i*fontSize,d*fontSize); if(d*fontSize>height&&Math.random()>0.975)drops[i]=0; drops[i]++; }); }, 33);
-
-            const log = document.getElementById('log-output');
-            const lines = [
-                `> TARGET ID: ${inn}`,
-                `> ОРГАНИЗАЦИЯ: ${osintData.org}`,
-                `> РЕЙТИНГ: КРИТИЧЕСКИЙ (🔴 RED)`,
-                `> СТАТУС: ПОДГОТОВКА К ОГРАНИЧЕНИЮ`,
-                `> АЛЕРТ: ${osintData.status}`,
-                `> SYNC-LOOP: PAUSE (ДОСТУПНО)`,
-                `> ДЕЙСТВИЕ: ТРЕБУЕТСЯ КОД ИНЖЕНЕРА`
-            ];
-
-            for (let t of lines) {
-                const div = document.createElement('div'); div.className = 'log-row'; div.innerText = t;
-                log.appendChild(div);
-                await new Promise(r => setTimeout(r, 700));
-            }
-        }
-
-        function terminateSession() { if (tg) tg.close(); else alert("Код Sync-Loop запрашивается в Telegram чате бота."); }
     </script>
 </body>
 </html>
