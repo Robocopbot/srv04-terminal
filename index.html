@@ -2,103 +2,132 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SRV-04 // TERMINAL</title>
     <style>
-        :root { --neon-green: #00ff41; --neon-red: #ff003c; --bg-dark: #050505; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg-dark); color: var(--neon-green); font-family: 'Courier New', monospace; overflow: hidden; }
+        :root { --neon-green: #00ff41; --neon-red: #ff003c; --bg-dark: #020202; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg-dark); color: var(--neon-green); font-family: 'Courier New', monospace; overflow: hidden; touch-action: manipulation; }
 
-        /* Эффект сетки */
-        .viewport { position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 4px, 3px 100%; z-index: 5; pointer-events: none; }
+        /* Оптимизированный фоновый кибер-интерфейс */
+        .viewport-noise { position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+            background-size: 100% 3px, 3px 100%; z-index: 5; pointer-events: none; opacity: 0.6; }
         
-        .grid { position: fixed; top: 0; left: 0; width: 200%; height: 200%; 
-            background-image: linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px), 
-                              linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
-            background-size: 40px 40px; transform: perspective(500px) rotateX(60deg) translateY(-50%);
-            animation: moveGrid 20s linear infinite; z-index: -1; }
-        @keyframes moveGrid { from { transform: perspective(500px) rotateX(60deg) translateY(-50%); } to { transform: perspective(500px) rotateX(60deg) translateY(0%); } }
+        /* Бесшовный 3D-пол */
+        .cyber-grid { position: fixed; bottom: -50%; left: -50%; width: 200%; height: 200%; 
+            background-image: linear-gradient(rgba(0, 255, 65, 0.15) 1px, transparent 1px), 
+                              linear-gradient(90deg, rgba(0, 255, 65, 0.15) 1px, transparent 1px);
+            background-size: 50px 50px; transform: perspective(600px) rotateX(65deg);
+            animation: gridMove 3s linear infinite; z-index: -1; }
+        @keyframes gridMove { from { background-position: 0 0; } to { background-position: 0 50px; } }
 
         .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; box-sizing: border-box; }
-        .terminal-box { border: 2px solid var(--neon-green); background: rgba(0, 0, 0, 0.9); padding: 30px; box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); width: 100%; max-width: 400px; }
+        .terminal-box { border: 2px solid var(--neon-green); background: rgba(0, 0, 0, 0.9); padding: 25px; box-shadow: 0 0 25px rgba(0, 255, 65, 0.2); width: 100%; max-width: 400px; backdrop-filter: blur(2px); }
 
-        input { background: transparent; border: 1px solid var(--neon-green); color: var(--neon-green); padding: 15px; width: 100%; box-sizing: border-box; outline: none; margin: 20px 0; font-size: 1.2rem; text-align: center; }
-        button { background: var(--neon-green); color: #000; border: none; padding: 18px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
+        h1 { font-size: 1.1rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 5px var(--neon-green); }
+        
+        /* Мобильно-оптимизированный Input */
+        input { background: transparent; border: 1px solid var(--neon-green); color: var(--neon-green); padding: 15px; width: 100%; box-sizing: border-box; outline: none; margin: 15px 0; font-size: 1.2rem; text-align: center; border-radius: 0; -webkit-appearance: none; }
+        input:focus { box-shadow: 0 0 10px rgba(0, 255, 65, 0.3); }
+        
+        button { background: var(--neon-green); color: #000; border: none; padding: 18px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; transition: 0.2s; border-radius: 0; }
+        button:active { background: #000; color: var(--neon-green); border: 1px solid var(--neon-green); }
 
-        .radar-circle { width: 100px; height: 100px; border: 2px solid var(--neon-green); border-radius: 50%; position: relative; margin: 20px auto; }
-        .radar-sweep { width: 50%; height: 50%; background: linear-gradient(45deg, var(--neon-green), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: sweep 1.5s linear infinite; }
+        .radar-circle { width: 90px; height: 90px; border: 2px solid var(--neon-green); border-radius: 50%; position: relative; margin: 15px auto; overflow: hidden; }
+        .radar-sweep { width: 50%; height: 100%; background: linear-gradient(to top, var(--neon-green), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: sweep 1.2s linear infinite; opacity: 0.6; }
+        .radar-dot { width: 4px; height: 4px; background: var(--neon-green); border-radius: 50%; position: absolute; animation: dotBlink 1.5s infinite; }
         @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes dotBlink { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
 
-        #log-screen { text-align: left; font-size: 0.8rem; height: 130px; overflow: hidden; margin-top: 15px; line-height: 1.4; }
-        .error-theme { border-color: var(--neon-red) !important; color: var(--neon-red) !important; box-shadow: 0 0 30px rgba(255, 0, 60, 0.4) !important; }
+        #log-screen { text-align: left; font-size: 0.8rem; height: 140px; overflow: hidden; margin-top: 10px; line-height: 1.4; }
+        .log-line { border-bottom: 1px solid rgba(0,255,65,0.1); padding: 3px 0; }
+        
+        .error-theme { border-color: var(--neon-red) !important; color: var(--neon-red) !important; box-shadow: 0 0 35px rgba(255, 0, 60, 0.4) !important; }
+        .error-theme h1, .error-theme .log-line { text-shadow: 0 0 5px var(--neon-red); }
+        
+        /* Исправленная анимация пульса */
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     </style>
 </head>
 <body>
-    <div class="viewport"></div>
-    <div class="grid"></div>
+    <div class="viewport-noise"></div>
+    <div class="cyber-grid"></div>
 
     <div class="container">
         <div id="box-auth" class="terminal-box">
-            <h1>[ SRV-04 // SECURITY ]</h1>
-            <p style="font-size: 0.7rem; opacity: 0.7;">ENTER IDENT_TOKEN (INN)</p>
-            <input type="number" id="inn-field" placeholder="XXXXXXXXXX">
+            <h1>[ SRV-04 // GATE ]</h1>
+            <p style="font-size: 0.7rem; opacity: 0.7;">IDENT_TOKEN: REQUIRED</p>
+            <input type="text" id="inn-field" placeholder="ВВЕДИТЕ ИНН" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off">
             <button onclick="startAudit()">ИНИЦИИРОВАТЬ СКАН</button>
         </div>
 
         <div id="box-scan" class="terminal-box" style="display: none;">
             <h1>[ SCANNING... ]</h1>
-            <div class="radar-circle"><div class="radar-sweep"></div></div>
-            <div id="status-text" style="font-size: 0.7rem;">ПОДКЛЮЧЕНИЕ К УЗЛУ ЕРВУ...</div>
+            <div class="radar-circle">
+                <div class="radar-sweep"></div>
+                <div class="radar-dot" style="top:20px; left:30px;"></div>
+                <div class="radar-dot" style="top:60px; left:70px;"></div>
+            </div>
+            <div id="status-text" style="font-size: 0.7rem; text-transform: uppercase;">ПЕРЕХВАТ ПАКЕТОВ...</div>
         </div>
 
         <div id="box-result" class="terminal-box" style="display: none;">
             <h1 style="color: var(--neon-red);">[ ⚠ ATTENTION ]</h1>
             <div id="log-screen"></div>
-            <button onclick="closeApp()" style="background: var(--neon-red); color: #fff; margin-top: 15px;">ВЕРНУТЬСЯ В ГЕЙТ</button>
+            <p style="font-size: 0.8rem; color: var(--neon-red); animation: pulse 1s infinite; font-weight: bold; margin-top: 10px;">SYNC TIME: 04:18:12</p>
+            <button onclick="closeApp()" style="background: var(--neon-red); color: #fff; margin-top: 10px;">ВЕРНУТЬСЯ В ГЕЙТ</button>
         </div>
     </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // Инициализация Telegram API с проверкой
         const tg = window.Telegram ? window.Telegram.WebApp : null;
-        if (tg) {
-            tg.expand();
-            tg.ready();
+        if (tg) { 
+            tg.expand(); 
+            tg.ready(); 
         }
 
-        async function startAudit() {
-            const inn = document.getElementById('inn-field').value;
-            if (inn.length < 10) return alert("ОШИБКА: НЕДОСТАТОЧНО ДАННЫХ");
+        // Автофокус для клавиатуры при загрузке
+        window.onload = () => {
+            const input = document.getElementById('inn-field');
+            if (input) input.focus();
+        };
 
-            // Вибрация (только в Telegram)
-            if (tg && tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
+        async function startAudit() {
+            const innField = document.getElementById('inn-field');
+            const inn = innField.value.trim();
+            
+            if (inn.length < 10) {
+                innField.style.borderColor = var(--neon-red);
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                return;
             }
+
+            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
             document.getElementById('box-auth').style.display = 'none';
             document.getElementById('box-scan').style.display = 'block';
 
             const steps = [
-                "ПЕРЕХВАТ ПАКЕТОВ MSK-GATE-04...",
-                "ДОСТУП К РЕГИСТРАМ ЕРВУ ПОЛУЧЕН.",
-                "АНАЛИЗ ЦИФРОВОГО СЛЕДА...",
+                "DECRYPTING MSK-GATE-04...",
+                "BYPASSING ФНС-FIREWALL...",
+                "ДОСТУП К РЕГИСТРАМ ЕРВУ...",
+                "EXTRACTING ENTITY_DATA...",
                 "ПРОВЕРКА БАЗЫ «КОРДОН»...",
-                "ЗАПРОС К РЕЕСТРУ БЛОКИРОВОК ФНС..."
+                "СИНХРОНИЗАЦИЯ С РЕЕСТРОМ ЕРВУ..."
             ];
 
             for (let step of steps) {
                 document.getElementById('status-text').innerText = step;
                 if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-                await new Promise(r => setTimeout(r, 1800));
+                await new Promise(r => setTimeout(r, 1600));
             }
 
-            showFinal(inn);
+            showError(inn);
         }
 
-        async function showFinal(inn) {
+        async function showError(inn) {
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
 
             document.getElementById('box-scan').style.display = 'none';
@@ -109,28 +138,24 @@
             const logScreen = document.getElementById('log-screen');
             const region = inn.substring(0, 2);
             const lines = [
-                `> ОБЪЕКТ: ID-${inn}`,
-                `> РЕГИОН: ${region}-RUS`,
-                `> КОРДОН: 🔴 ЗАПРЕТ_ВЫЕЗДА`,
-                `> ФНС: 🔴 БЛОКИРОВКА_СЧЕТОВ`,
-                `> СТАТУС: КРИТИЧЕСКИЙ РИСК`
+                `> ИНН: ID-${inn}`,
+                `> РЕГИОН ПРИВЯЗКИ: ${region}-RUS`,
+                `> БАЗА «КОРДОН»: 🔴 ЗАПРЕТ_ВЫЕЗДА`,
+                `> БАЗА «ФНС»: 🔴 БЛОКИРОВКА_СЧЕТОВ`,
+                `> СТАТУС ОБЪЕКТА: КРИТИЧЕСКИЙ РИСК`
             ];
 
             for (let line of lines) {
                 const p = document.createElement('div');
-                p.style.marginBottom = "5px";
+                p.className = 'log-line';
                 p.innerText = line;
                 logScreen.appendChild(p);
                 await new Promise(r => setTimeout(r, 600));
             }
         }
 
-        function closeApp() {
-            if (tg) {
-                tg.close();
-            } else {
-                alert("Окно будет закрыто в приложении Telegram");
-            }
+        function closeApp() { 
+            if (tg) tg.close(); 
         }
     </script>
 </body>
