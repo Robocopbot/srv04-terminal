@@ -6,60 +6,126 @@
     <title>SRV-04 // AUDIT</title>
     <style>
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
-        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--main); font-family: monospace; overflow: hidden; }
-        .container { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 10px; }
-        .terminal { border: 2px solid var(--main); padding: 20px; width: 100%; max-width: 350px; text-align: left; background: rgba(0,20,0,0.9); }
-        h3 { border-bottom: 1px solid var(--main); padding-bottom: 5px; margin-top: 0; text-align: center; }
-        .log-line { margin: 8px 0; font-size: 0.85rem; }
+        body, html { margin: 0; padding: 0; background: #000; color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; }
+        #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.3; }
+        .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
+        
+        .window { border: 2px solid var(--main); background: rgba(0, 15, 0, 0.95); width: 100%; max-width: 400px; box-shadow: 0 0 25px rgba(0,255,65,0.3); margin-bottom: 10px; }
+        .win-header { background: var(--main); color: #000; padding: 6px 12px; font-weight: bold; font-size: 0.75rem; display: flex; justify-content: space-between; letter-spacing: 1px; }
+        .win-body { padding: 25px; text-align: left; }
+        
+        .big-text { font-size: 1.5rem; font-weight: bold; letter-spacing: 3px; margin-bottom: 12px; }
+        input { background: #001100; border: 1px solid var(--main); color: var(--main); padding: 15px; width: 100%; margin: 15px 0; text-align: center; font-family: inherit; font-size: 1.1rem; }
+        button { background: var(--main); color: #000; border: none; padding: 18px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; font-family: inherit; }
+        
+        .log-line { font-size: 0.95rem; margin: 6px 0; border-left: 4px solid var(--main); padding-left: 12px; }
+        .alert-mode { border-color: var(--alert) !important; color: var(--alert) !important; }
+        .blink { animation: blink 0.7s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .radar { width: 110px; height: 110px; border: 2px solid var(--main); border-radius: 50%; position: relative; margin: 20px auto; overflow: hidden; }
+        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 1.8s linear infinite; }
+        @keyframes spin { from { rotate: 0deg; } to { rotate: 360deg; } }
     </style>
 </head>
-<body>
+<body class="crt">
+    <canvas id="matrix-bg"></canvas>
     <div class="container">
-        <div class="terminal" id="term">
-            <h3>[ SYSTEM CHECK ]</h3>
-            <div id="output"></div>
+        <div class="window" id="input-win">
+            <div class="win-header"><span>SRV_MSK_GATE_04</span><span>[ OFFLINE ]</span></div>
+            <div class="win-body" style="text-align: center;">
+                <div class="big-text">IDENTIFICATION</div>
+                <input type="text" id="inn-field" placeholder="ВВЕДИТЕ ИНН ОБЪЕКТА" maxlength="12">
+                <button onclick="manualStart()">ИНИЦИИРОВАТЬ АУДИТ</button>
+            </div>
+        </div>
+
+        <div class="window" id="scan-win" style="display:none;">
+            <div class="win-header"><span>OSINT_SCANNER_v3</span><span>[ WORKING ]</span></div>
+            <div class="win-body" style="text-align: center;">
+                <div class="radar"><div class="sweep"></div></div>
+                <div id="status" class="big-text">DECRYPTING...</div>
+            </div>
+        </div>
+
+        <div class="window" id="res-win" style="display:none;">
+            <div class="win-header" style="background: var(--alert); color: #fff;"><span>SECURITY_ALERT</span><span>[ ! ]</span></div>
+            <div class="win-body">
+                <div class="big-text blink" style="color: var(--alert);">CRITICAL_STATUS</div>
+                <div id="log-box"></div>
+                <button style="background: var(--alert); color: #fff; margin-top: 20px;" onclick="window.Telegram.WebApp.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
+            </div>
         </div>
     </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        const tg = window.Telegram ? window.Telegram.WebApp : null;
-        if (tg) { tg.expand(); tg.ready(); }
-
-        const out = document.getElementById('output');
-        function addLog(text, isAlert = false) {
-            const d = document.createElement('div');
-            d.className = 'log-line';
-            d.style.color = isAlert ? 'var(--alert)' : 'var(--main)';
-            d.innerText = `> ${text}`;
-            out.appendChild(d);
+        // MATRIX
+        const canvas = document.getElementById('matrix-bg'), ctx = canvas.getContext('2d');
+        let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
+        let drops = Array(Math.floor(w/15)).fill(1);
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,w,h);
+            ctx.fillStyle = '#0F0'; ctx.font = '15px monospace';
+            drops.forEach((y, i) => {
+                ctx.fillText(Math.floor(Math.random()*2), i*15, y*15);
+                if (y*15 > h && Math.random() > 0.98) drops[i] = 0; drops[i]++;
+            });
         }
+        setInterval(drawMatrix, 33);
 
-        // РАСШИФРОВКА КРИПТО-ПАКЕТА ОТ БОТА
         const urlParams = new URLSearchParams(window.location.search);
         const q = urlParams.get('q');
-        let inn = "UNKNOWN", osint = {org: "N/A", ceo: "N/A", status: "N/A"};
+        let osint = null, currentInn = "";
 
         if(q) {
             try {
-                // Декодируем URL-safe Base64
-                let decodedQ = atob(q.replace(/-/g, '+').replace(/_/g, '/'));
-                const p = new URLSearchParams(decodedQ);
-                inn = p.get('inn');
-                osint = JSON.parse(atob(p.get('p').replace(/-/g, '+').replace(/_/g, '/')));
-            } catch(e) {
-                addLog("DECRYPTION ERROR: " + e.message, true);
-            }
+                const decoded = JSON.parse(atob(atob(q.replace(/-/g, '+').replace(/_/g, '/'))));
+                currentInn = decoded.inn;
+                osint = decoded.p;
+                document.getElementById('input-win').style.display = 'none';
+                runAudit(currentInn);
+            } catch(e) { console.error("AUTH_ERR"); }
         }
 
-        setTimeout(() => { addLog("INIT DEEP SCAN..."); }, 500);
-        setTimeout(() => { addLog(`TARGET INN: ${inn}`); }, 1500);
-        setTimeout(() => { addLog(`CEO MATCH: ${osint.ceo}`); }, 2500);
-        setTimeout(() => { addLog(`ORG: ${osint.org}`); }, 3500);
-        setTimeout(() => { 
-            addLog(`STATUS: RED`, true); 
-            addLog(`RECOMMENDATION: СВЯЖИТЕСЬ С ИНЖЕНЕРОМ`, true); 
-        }, 4500);
+        function manualStart() {
+            currentInn = document.getElementById('inn-field').value;
+            if(currentInn.length >= 10) runAudit(currentInn);
+        }
+
+        async function runAudit(inn) {
+            document.getElementById('input-win').style.display = 'none';
+            document.getElementById('scan-win').style.display = 'block';
+            const steps = ["TUNNELING...", "PARSING_DB...", `TARGET: ${osint ? osint.o : 'SEARCH...'}`, "FINALIZING..."];
+            for(let s of steps) {
+                document.getElementById('status').innerText = s;
+                await new Promise(r => setTimeout(r, 1500));
+            }
+            showFinal(inn);
+        }
+
+        function showFinal(inn) {
+            document.getElementById('scan-win').style.display = 'none';
+            document.getElementById('res-win').style.display = 'block';
+            document.getElementById('res-win').classList.add('alert-mode');
+            const box = document.getElementById('log-box');
+            const data = osint || { o: "ДАННЫЕ СКРЫТЫ", c: "HIDDEN", s: "ВЫСОКИЙ" };
+            const lines = [
+                `> TARGET_ID: ${inn}`,
+                `> ORGANIZATION: ${data.o}`,
+                `> CEO_CHECK: ${data.c}`,
+                `> STATUS: ${data.s}`,
+                `> .....................`,
+                `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ ДЛЯ`,
+                `> РЕШЕНИЯ ВАШЕЙ ПРОБЛЕМЫ`
+            ];
+            lines.forEach((l, i) => setTimeout(() => {
+                const d = document.createElement('div');
+                d.className = 'log-line' + (l.includes('STATUS') ? ' blink' : '');
+                d.innerText = l;
+                box.appendChild(d);
+            }, i * 600));
+        }
     </script>
 </body>
 </html>
