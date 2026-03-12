@@ -7,18 +7,18 @@
     <style>
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
         body, html { margin: 0; padding: 0; background: #000; color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; }
-        #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.2; }
+        #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.25; }
         .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
-        .window { border: 4px solid var(--main); background: rgba(0, 10, 0, 0.95); width: 100%; max-width: 550px; box-shadow: 0 0 40px rgba(0,255,65,0.4); }
-        .win-header { background: var(--main); color: #000; padding: 10px; font-weight: bold; font-size: 1rem; display: flex; justify-content: space-between; }
-        .win-body { padding: 30px; text-align: center; }
+        .window { border: 4px solid var(--main); background: rgba(0, 10, 0, 0.96); width: 100%; max-width: 550px; box-shadow: 0 0 45px rgba(0,255,65,0.4); }
+        .header { background: var(--main); color: #000; padding: 10px; font-weight: bold; font-size: 1rem; display: flex; justify-content: space-between; }
+        .body { padding: 30px; text-align: center; }
         .title { font-size: 2.2rem; font-weight: bold; letter-spacing: 5px; margin-bottom: 20px; text-shadow: 0 0 10px var(--main); }
-        .radar { width: 140px; height: 140px; border: 4px solid var(--main); border-radius: 50%; position: relative; margin: 20px auto; overflow: hidden; }
-        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 1s linear infinite; }
+        .risk-val { font-size: 4rem; font-weight: bold; color: var(--alert); text-shadow: 0 0 25px var(--alert); margin: 25px 0; }
+        .log-box { font-size: 1.2rem; text-align: left; height: 160px; overflow: hidden; border-top: 1px solid var(--main); padding-top: 10px; line-height: 1.5; }
+        .radar { width: 150px; height: 150px; border: 4px solid var(--main); border-radius: 50%; position: relative; margin: 20px auto; overflow: hidden; }
+        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 1.2s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .log-box { font-size: 1.1rem; text-align: left; height: 150px; overflow: hidden; border-top: 1px solid var(--main); padding-top: 10px; }
-        .risk-gauge { font-size: 3.5rem; font-weight: bold; color: var(--alert); text-shadow: 0 0 20px var(--alert); margin: 20px 0; }
-        .btn-panic { background: var(--alert); color: #fff; border: 4px solid #fff; padding: 25px; width: 100%; font-weight: bold; font-size: 1.4rem; cursor: pointer; }
+        .btn-p { background: var(--alert); color: #fff; border: 4px solid #fff; padding: 25px; width: 100%; font-weight: bold; font-size: 1.4rem; cursor: pointer; text-transform: uppercase; margin-top: 25px; }
         .blink { animation: blink 0.5s infinite; }
         @keyframes blink { 50% { opacity: 0; } }
     </style>
@@ -27,20 +27,20 @@
     <canvas id="matrix-bg"></canvas>
     <div class="container">
         <div class="window" id="ui-action">
-            <div class="win-header"><span>AUDIT_CORE_v10.0</span><span>[ RUNNING ]</span></div>
-            <div class="win-body">
+            <div class="header"><span id="mode-text">SYSTEM_AUDIT_v11</span><span>[ BUSY ]</span></div>
+            <div class="body">
                 <div class="radar"><div class="sweep"></div></div>
-                <div id="status" class="title">INITIALIZING...</div>
+                <div id="status" class="title">CONNECTING...</div>
                 <div class="log-box" id="hud-log"></div>
             </div>
         </div>
         <div class="window" id="ui-res" style="display:none; border-color: var(--alert);">
-            <div class="win-header" style="background: var(--alert); color: #fff;"><span>SECURITY_ALERT</span><span>[ ! ]</span></div>
-            <div class="win-body">
-                <div class="title blink" style="color: var(--alert);">CRITICAL_RED</div>
-                <div class="risk-gauge" id="risk-val">00%</div>
-                <div id="final-log" style="text-align: left; margin-bottom: 20px;"></div>
-                <button class="btn-panic" onclick="window.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
+            <div class="header" style="background: var(--alert); color: #fff;"><span>THREAT_LEVEL_5</span><span>[ ! ]</span></div>
+            <div class="body">
+                <div class="title blink" style="color: var(--alert);">RED_STATUS_DETECTED</div>
+                <div class="risk-val" id="risk-display">00%</div>
+                <div id="final-log" style="text-align: left;"></div>
+                <button class="btn-p" onclick="window.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
             </div>
         </div>
     </div>
@@ -54,7 +54,7 @@
 
         const tg = window.Telegram.WebApp; tg.expand();
         const startParam = tg.initDataUnsafe.start_param;
-        let inn = "UNKNOWN", osint = { o: "N/D", c: "HIDDEN", r: "85%", st: "CRITICAL" };
+        let inn = "UNKNOWN", osint = { o: "N/D", c: "HIDDEN", r: "90%", t: "OBJECT" };
 
         if(startParam) {
             try {
@@ -65,21 +65,23 @@
             } catch(e) {}
         }
 
+        if(osint.t === "ФИЗ_ЛИЦО") document.getElementById('mode-text').innerText = "PERSONAL_SCRUTINY_v11";
+
         const log = document.getElementById('hud-log');
-        const phrases = ["BYPASSING KORDON-FW...", "PULLING TAX_NODES...", "CROSS_REFERENCING_EGRUL...", `ID_MATCH: ${osint.o}`, "DONE."];
+        const phrases = ["ESTABLISHING UPLINK...", "SCANNING_PRIVATE_NODES...", "PULLING_FNS_DOSSIER...", `TARGET: ${osint.o}`, "READY."];
         let idx = 0;
         const interval = setInterval(() => {
             if(idx < phrases.length) {
                 const d = document.createElement('div'); d.innerText = `> ${phrases[idx++]}`;
                 log.appendChild(d);
             } else { clearInterval(interval); setTimeout(showResult, 1000); }
-        }, 1200);
+        }, 1100);
 
         function showResult() {
             document.getElementById('ui-action').style.display = 'none';
             document.getElementById('ui-res').style.display = 'block';
-            document.getElementById('risk-val').innerText = osint.r;
-            const lines = [`> TARGET: ${inn}`, `> ENTITY: ${osint.o}`, `> CEO: ${osint.c}`, `> RISK: ${osint.r}`, `> STATUS: ${osint.st}`];
+            document.getElementById('risk-display').innerText = osint.r;
+            const lines = [`> INN: ${inn}`, `> TYPE: ${osint.t}`, `> PROFILE: ${osint.o}`, `> RISK: ${osint.r}`, `> STATUS: CRITICAL_RED`];
             lines.forEach((l, i) => setTimeout(() => {
                 const d = document.createElement('div'); d.innerText = l; document.getElementById('final-log').appendChild(d);
             }, i * 600));
