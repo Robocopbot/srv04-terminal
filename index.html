@@ -3,26 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SRV-04 // TERMINAL</title>
+    <title>SRV-04 // MONITORING</title>
     <style>
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
         body, html { margin: 0; padding: 0; background: #000; color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; }
         #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.3; }
         .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
-        
-        .window { border: 5px solid var(--main); background: rgba(0, 10, 0, 0.98); width: 100%; max-width: 500px; box-shadow: 0 0 50px rgba(0,255,65,0.4); }
-        .win-header { background: var(--main); color: #000; padding: 12px; font-weight: bold; font-size: 1.1rem; display: flex; justify-content: space-between; letter-spacing: 2px; }
-        .win-body { padding: 30px; text-align: left; }
-        
-        .big-title { font-size: 2rem; font-weight: bold; letter-spacing: 6px; margin-bottom: 25px; text-align: center; text-shadow: 0 0 15px var(--main); }
-        .log-row { font-size: 1.3rem; margin: 12px 0; border-left: 8px solid var(--main); padding-left: 20px; background: rgba(0,255,65,0.1); line-height: 1.5; }
-        
-        .radar { width: 160px; height: 160px; border: 5px solid var(--main); border-radius: 50%; position: relative; margin: 25px auto; overflow: hidden; }
-        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 1.5s linear infinite; }
+        .window { border: 5px solid var(--main); background: rgba(0, 10, 0, 0.98); width: 100%; max-width: 500px; box-shadow: 0 0 60px rgba(0,255,65,0.4); }
+        .win-header { background: var(--main); color: #000; padding: 15px; font-weight: bold; font-size: 1.2rem; display: flex; justify-content: space-between; }
+        .win-body { padding: 40px; text-align: left; }
+        .huge-title { font-size: 2.2rem; font-weight: bold; letter-spacing: 7px; margin-bottom: 30px; text-align: center; text-shadow: 0 0 20px var(--main); }
+        .log-row { font-size: 1.5rem; margin: 15px 0; border-left: 10px solid var(--main); padding-left: 20px; background: rgba(0,255,65,0.1); line-height: 1.6; }
+        .radar { width: 180px; height: 180px; border: 5px solid var(--main); border-radius: 50%; position: relative; margin: 30px auto; overflow: hidden; }
+        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 1.2s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-        .btn-action { background: var(--alert); color: #fff; border: 3px solid #fff; padding: 22px; width: 100%; font-weight: bold; font-size: 1.3rem; margin-top: 30px; cursor: pointer; text-transform: uppercase; }
-        .blink { animation: blink 0.6s infinite; }
+        .btn-panic { background: var(--alert); color: #fff; border: 4px solid #fff; padding: 25px; width: 100%; font-weight: bold; font-size: 1.4rem; margin-top: 30px; cursor: pointer; text-transform: uppercase; }
+        .blink { animation: blink 0.5s infinite; }
         @keyframes blink { 50% { opacity: 0; } }
     </style>
 </head>
@@ -30,26 +26,23 @@
     <canvas id="matrix-bg"></canvas>
     <div class="container">
         <div class="window" id="scan-win">
-            <div class="win-header"><span>SRV_SYSTEM_CORE_v4.0</span><span>[ BUSY ]</span></div>
+            <div class="win-header"><span>SRV_SYSTEM_CORE_04</span><span>[ ACTIVE ]</span></div>
             <div class="win-body">
                 <div class="radar"><div class="sweep"></div></div>
-                <div id="status" class="big-title">SCANNING...</div>
+                <div id="status" class="huge-title">SCANNING...</div>
             </div>
         </div>
-
         <div class="window" id="res-win" style="display:none; border-color: var(--alert);">
-            <div class="win-header" style="background: var(--alert); color: #fff;"><span>SECURITY_THREAT</span><span>[ ! ]</span></div>
+            <div class="win-header" style="background: var(--alert); color: #fff;"><span>SECURITY_AUDIT_REPORT</span><span>[ ! ]</span></div>
             <div class="body">
-                <div class="big-title blink" style="color: var(--alert);">CRITICAL_RED_STATUS</div>
+                <div class="huge-title blink" style="color: var(--alert);">CRITICAL_RED</div>
                 <div id="log-box"></div>
-                <button class="btn-action" onclick="window.Telegram.WebApp.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
+                <button class="btn-panic" onclick="window.Telegram.WebApp.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
             </div>
         </div>
     </div>
-
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // MATRIX
         const canvas = document.getElementById('matrix-bg'), ctx = canvas.getContext('2d');
         let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
         let drops = Array(Math.floor(w/15)).fill(1);
@@ -63,21 +56,23 @@
         }
         setInterval(draw, 33);
 
-        // DATA PARSING
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // PARSING URL DATA
         const params = new URLSearchParams(window.location.search);
         const inn = params.get('inn') || "UNKNOWN";
         const p = params.get('p');
-        let osint = { o: "N/D", c: "HIDDEN", s: "CRITICAL" };
+        let osint = { o: "N/D", c: "HIDDEN", s: "RED_ALERT" };
 
         if(p) {
             try {
-                // Корректировка Base64 для JavaScript (добавление padding)
                 const b64 = p.padEnd(p.length + (4 - p.length % 4) % 4, '=');
                 osint = JSON.parse(atob(b64));
-            } catch(e) { console.error("DECODE_FAIL"); }
+            } catch(e) { console.error("DECODE_ERR"); }
         }
 
-        const steps = ["TUNNELING...", "ACCESSING_EGRUL...", `ID_MATCH: ${osint.o}`, "DONE."];
+        const steps = ["CONNECTING...", "READING_DB...", `TARGET: ${osint.o}`, "DONE."];
         let idx = 0;
         const interval = setInterval(() => {
             if(idx < steps.length) {
@@ -86,28 +81,19 @@
                 clearInterval(interval);
                 renderResult();
             }
-        }, 1500);
+        }, 1200);
 
         function renderResult() {
             document.getElementById('scan-win').style.display = 'none';
             document.getElementById('res-win').style.display = 'block';
             const box = document.getElementById('log-box');
-            const lines = [
-                `> TARGET_ID: ${inn}`,
-                `> ENTITY: ${osint.o}`,
-                `> CEO: ${osint.c}`,
-                `> STATUS: ${osint.s}`,
-                `> .....................`,
-                `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ`
-            ];
-            lines.forEach((l, i) => {
-                setTimeout(() => {
-                    const d = document.createElement('div');
-                    d.className = 'log-row' + (l.includes('STATUS') ? ' blink' : '');
-                    d.innerText = l;
-                    box.appendChild(d);
-                }, i * 700);
-            });
+            const lines = [`> TARGET: ${inn}`, `> ENTITY: ${osint.o}`, `> CEO: ${osint.c}`, `> STATUS: ${osint.s}`, `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ` ];
+            lines.forEach((l, i) => setTimeout(() => {
+                const d = document.createElement('div');
+                d.className = 'log-row' + (l.includes('STATUS') ? ' blink' : '');
+                d.innerText = l;
+                box.appendChild(d);
+            }, i * 600));
         }
     </script>
 </body>
