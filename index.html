@@ -7,64 +7,55 @@
     <style>
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
         body, html { margin: 0; padding: 0; background: #000; color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; }
-        #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.3; }
-        .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
+        #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.35; }
+        .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; }
         
-        .window { border: 2px solid var(--main); background: rgba(0, 15, 0, 0.95); width: 100%; max-width: 400px; box-shadow: 0 0 25px rgba(0,255,65,0.3); margin-bottom: 10px; }
-        .win-header { background: var(--main); color: #000; padding: 6px 12px; font-weight: bold; font-size: 0.75rem; display: flex; justify-content: space-between; letter-spacing: 1px; }
-        .win-body { padding: 25px; text-align: left; }
+        /* ГИГАНТСКИЕ ОКНА */
+        .window { border: 3px solid var(--main); background: rgba(0, 5, 0, 0.98); width: 100%; max-width: 500px; box-shadow: 0 0 30px rgba(0,255,65,0.4); }
+        .header { background: var(--main); color: #000; padding: 8px 15px; font-weight: bold; font-size: 1rem; display: flex; justify-content: space-between; }
+        .body { padding: 30px; }
         
-        .big-text { font-size: 1.5rem; font-weight: bold; letter-spacing: 3px; margin-bottom: 12px; }
-        input { background: #001100; border: 1px solid var(--main); color: var(--main); padding: 15px; width: 100%; margin: 15px 0; text-align: center; font-family: inherit; font-size: 1.1rem; }
-        button { background: var(--main); color: #000; border: none; padding: 18px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; font-family: inherit; }
+        .title { font-size: 1.8rem; font-weight: bold; letter-spacing: 4px; margin-bottom: 20px; text-shadow: 0 0 10px var(--main); }
+        .log-row { font-size: 1.1rem; margin: 10px 0; border-left: 5px solid var(--main); padding-left: 15px; background: rgba(0,255,65,0.05); }
+        .critical { color: var(--alert); border-color: var(--alert); text-shadow: 0 0 10px var(--alert); }
         
-        .log-line { font-size: 0.95rem; margin: 6px 0; border-left: 4px solid var(--main); padding-left: 12px; }
-        .alert-mode { border-color: var(--alert) !important; color: var(--alert) !important; }
-        .blink { animation: blink 0.7s infinite; }
+        /* РАДАР */
+        .radar { width: 150px; height: 150px; border: 3px solid var(--main); border-radius: 50%; position: relative; margin: 30px auto; }
+        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 1.5s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .btn { background: var(--alert); color: #fff; border: none; padding: 20px; width: 100%; font-weight: bold; font-size: 1.1rem; margin-top: 25px; cursor: pointer; border: 2px solid #fff; }
+        .blink { animation: blink 0.6s infinite; }
         @keyframes blink { 50% { opacity: 0; } }
-
-        .radar { width: 110px; height: 110px; border: 2px solid var(--main); border-radius: 50%; position: relative; margin: 20px auto; overflow: hidden; }
-        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 1.8s linear infinite; }
-        @keyframes spin { from { rotate: 0deg; } to { rotate: 360deg; } }
     </style>
 </head>
 <body class="crt">
     <canvas id="matrix-bg"></canvas>
     <div class="container">
-        <div class="window" id="input-win">
-            <div class="win-header"><span>SRV_MSK_GATE_04</span><span>[ OFFLINE ]</span></div>
-            <div class="win-body" style="text-align: center;">
-                <div class="big-text">IDENTIFICATION</div>
-                <input type="text" id="inn-field" placeholder="ВВЕДИТЕ ИНН ОБЪЕКТА" maxlength="12">
-                <button onclick="manualStart()">ИНИЦИИРОВАТЬ АУДИТ</button>
-            </div>
-        </div>
-
-        <div class="window" id="scan-win" style="display:none;">
-            <div class="win-header"><span>OSINT_SCANNER_v3</span><span>[ WORKING ]</span></div>
-            <div class="win-body" style="text-align: center;">
+        <div class="window" id="scan-win">
+            <div class="header"><span>OSINT_AUDIT_SYSTEM_v4.0</span><span>[ ONLINE ]</span></div>
+            <div class="body" style="text-align: center;">
                 <div class="radar"><div class="sweep"></div></div>
-                <div id="status" class="big-text">DECRYPTING...</div>
+                <div id="status" class="title">INITIALIZING...</div>
             </div>
         </div>
 
         <div class="window" id="res-win" style="display:none;">
-            <div class="win-header" style="background: var(--alert); color: #fff;"><span>SECURITY_ALERT</span><span>[ ! ]</span></div>
-            <div class="win-body">
-                <div class="big-text blink" style="color: var(--alert);">CRITICAL_STATUS</div>
+            <div class="header" style="background: var(--alert); color: #fff;"><span>CRITICAL_REPORT</span><span>[ ! ]</span></div>
+            <div class="body">
+                <div class="title critical blink">RED_STATUS_DETECTED</div>
                 <div id="log-box"></div>
-                <button style="background: var(--alert); color: #fff; margin-top: 20px;" onclick="window.Telegram.WebApp.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
+                <button class="btn" onclick="window.Telegram.WebApp.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
             </div>
         </div>
     </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // MATRIX
         const canvas = document.getElementById('matrix-bg'), ctx = canvas.getContext('2d');
         let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
         let drops = Array(Math.floor(w/15)).fill(1);
-        function drawMatrix() {
+        function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,w,h);
             ctx.fillStyle = '#0F0'; ctx.font = '15px monospace';
             drops.forEach((y, i) => {
@@ -72,59 +63,52 @@
                 if (y*15 > h && Math.random() > 0.98) drops[i] = 0; drops[i]++;
             });
         }
-        setInterval(drawMatrix, 33);
+        setInterval(draw, 33);
 
         const urlParams = new URLSearchParams(window.location.search);
         const q = urlParams.get('q');
-        let osint = null, currentInn = "";
+        let osint = { o: "ДАННЫЕ СКРЫТЫ", c: "HIDDEN", s: "CRITICAL" }, inn = "UNKNOWN";
 
         if(q) {
             try {
-                const decoded = JSON.parse(atob(atob(q.replace(/-/g, '+').replace(/_/g, '/'))));
-                currentInn = decoded.inn;
-                osint = decoded.p;
-                document.getElementById('input-win').style.display = 'none';
-                runAudit(currentInn);
-            } catch(e) { console.error("AUTH_ERR"); }
+                // Продвинутый декодер с поддержкой padding
+                const decodedQ = atob(q);
+                const p = new URLSearchParams(decodedQ);
+                inn = p.get('inn');
+                osint = JSON.parse(atob(p.get('p')));
+            } catch(e) { console.error("DECODE_FAIL"); }
         }
 
-        function manualStart() {
-            currentInn = document.getElementById('inn-field').value;
-            if(currentInn.length >= 10) runAudit(currentInn);
-        }
-
-        async function runAudit(inn) {
-            document.getElementById('input-win').style.display = 'none';
-            document.getElementById('scan-win').style.display = 'block';
-            const steps = ["TUNNELING...", "PARSING_DB...", `TARGET: ${osint ? osint.o : 'SEARCH...'}`, "FINALIZING..."];
-            for(let s of steps) {
-                document.getElementById('status').innerText = s;
-                await new Promise(r => setTimeout(r, 1500));
+        const steps = ["TUNNELING...", "PARSING_RECORDS...", `FOUND: ${osint.o}`, "DONE."];
+        let idx = 0;
+        const timer = setInterval(() => {
+            if(idx < steps.length) {
+                document.getElementById('status').innerText = steps[idx++];
+            } else {
+                clearInterval(timer);
+                showResult();
             }
-            showFinal(inn);
-        }
+        }, 1500);
 
-        function showFinal(inn) {
+        function showResult() {
             document.getElementById('scan-win').style.display = 'none';
             document.getElementById('res-win').style.display = 'block';
-            document.getElementById('res-win').classList.add('alert-mode');
             const box = document.getElementById('log-box');
-            const data = osint || { o: "ДАННЫЕ СКРЫТЫ", c: "HIDDEN", s: "ВЫСОКИЙ" };
             const lines = [
                 `> TARGET_ID: ${inn}`,
-                `> ORGANIZATION: ${data.o}`,
-                `> CEO_CHECK: ${data.c}`,
-                `> STATUS: ${data.s}`,
-                `> .....................`,
-                `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ ДЛЯ`,
-                `> РЕШЕНИЯ ВАШЕЙ ПРОБЛЕМЫ`
+                `> ORGANIZATION: ${osint.o}`,
+                `> CEO_CHECK: ${osint.c}`,
+                `> AUDIT: ${osint.s}`,
+                `> ACTION: CONTACT_OPERATOR`
             ];
-            lines.forEach((l, i) => setTimeout(() => {
-                const d = document.createElement('div');
-                d.className = 'log-line' + (l.includes('STATUS') ? ' blink' : '');
-                d.innerText = l;
-                box.appendChild(d);
-            }, i * 600));
+            lines.forEach((l, i) => {
+                setTimeout(() => {
+                    const d = document.createElement('div');
+                    d.className = 'log-row' + (l.includes('CRITICAL') ? ' critical' : '');
+                    d.innerText = l;
+                    box.appendChild(d);
+                }, i * 600);
+            });
         }
     </script>
 </body>
