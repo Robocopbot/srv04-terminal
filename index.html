@@ -6,95 +6,60 @@
     <title>SRV-04 // AUDIT</title>
     <style>
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
-        body, html { margin: 0; padding: 0; background: #000; color: var(--main); font-family: monospace; overflow: hidden; }
-        #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.3; }
-        .container { position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; height: 100vh; padding: 10px; }
-        .terminal { border: 2px solid var(--main); background: rgba(0, 10, 0, 0.9); padding: 25px; width: 100%; max-width: 350px; text-align: center; }
-        input { background: #001100; border: 1px solid var(--main); color: var(--main); padding: 12px; width: 100%; margin: 15px 0; text-align: center; outline: none; }
-        button { background: var(--main); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; }
-        .radar { width: 80px; height: 80px; border: 2px solid var(--main); border-radius: 50%; position: relative; margin: 15px auto; overflow: hidden; }
-        .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 2s linear infinite; }
-        @keyframes spin { from { rotate: 0deg; } to { rotate: 360deg; } }
-        #log { text-align: left; font-size: 0.75rem; margin-top: 15px; max-height: 150px; overflow-y: auto; display:none; }
-        .alert { border-color: var(--alert) !important; color: var(--alert) !important; }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--main); font-family: monospace; overflow: hidden; }
+        .container { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 10px; }
+        .terminal { border: 2px solid var(--main); padding: 20px; width: 100%; max-width: 350px; text-align: left; background: rgba(0,20,0,0.9); }
+        h3 { border-bottom: 1px solid var(--main); padding-bottom: 5px; margin-top: 0; text-align: center; }
+        .log-line { margin: 8px 0; font-size: 0.85rem; }
     </style>
 </head>
 <body>
-    <canvas id="matrix-bg"></canvas>
     <div class="container">
-        <div id="ui-core" class="terminal">
-            <h2 id="title">[ SRV-MSK-04 ]</h2>
-            
-            <div id="manual-input">
-                <div style="font-size: 0.7rem;">ВВЕДИТЕ ИНН ОБЪЕКТА:</div>
-                <input type="text" id="inn-field" placeholder="10-12 ЦИФР" maxlength="12">
-                <button onclick="startAudit()">ЗАПУСТИТЬ АУДИТ</button>
-            </div>
-
-            <div id="scan-view" style="display:none;">
-                <div class="radar"><div class="sweep"></div></div>
-                <div id="status">INIT...</div>
-            </div>
-
-            <div id="log" class="log-box"></div>
+        <div class="terminal" id="term">
+            <h3>[ SYSTEM CHECK ]</h3>
+            <div id="output"></div>
         </div>
     </div>
 
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        // MATRIX EFFECT
-        const canvas = document.getElementById('matrix-bg'), ctx = canvas.getContext('2d');
-        let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
-        let drops = Array(Math.floor(w/15)).fill(1);
-        function draw() {
-            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,w,h);
-            ctx.fillStyle = '#0F0'; ctx.font = '15px monospace';
-            drops.forEach((y, i) => {
-                ctx.fillText(Math.floor(Math.random()*2), i*15, y*15);
-                if (y*15 > h && Math.random() > 0.98) drops[i] = 0; drops[i]++;
-            });
-        }
-        setInterval(draw, 33);
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) { tg.expand(); tg.ready(); }
 
-        // DATA PARSING
+        const out = document.getElementById('output');
+        function addLog(text, isAlert = false) {
+            const d = document.createElement('div');
+            d.className = 'log-line';
+            d.style.color = isAlert ? 'var(--alert)' : 'var(--main)';
+            d.innerText = `> ${text}`;
+            out.appendChild(d);
+        }
+
+        // РАСШИФРОВКА КРИПТО-ПАКЕТА ОТ БОТА
         const urlParams = new URLSearchParams(window.location.search);
         const q = urlParams.get('q');
-        let osint = null, targetInn = "";
+        let inn = "UNKNOWN", osint = {org: "N/A", ceo: "N/A", status: "N/A"};
 
         if(q) {
             try {
-                const decodedQ = atob(q.replace(/-/g, '+').replace(/_/g, '/'));
+                // Декодируем URL-safe Base64
+                let decodedQ = atob(q.replace(/-/g, '+').replace(/_/g, '/'));
                 const p = new URLSearchParams(decodedQ);
-                targetInn = p.get('inn');
+                inn = p.get('inn');
                 osint = JSON.parse(atob(p.get('p').replace(/-/g, '+').replace(/_/g, '/')));
-                document.getElementById('manual-input').style.display = 'none';
-                startAudit(targetInn);
-            } catch(e) { console.error("DECODE_ERR"); }
-        }
-
-        async function startAudit(inn) {
-            const val = inn || document.getElementById('inn-field').value;
-            if(!val || val.length < 10) return;
-            
-            document.getElementById('manual-input').style.display = 'none';
-            document.getElementById('scan-view').style.display = 'block';
-            
-            const steps = ["TUNNELING...", "DB_QUERY...", `MATCH: ${osint ? osint.ceo : 'SEARCHING...'}`, "COMPILING..."];
-            for(let s of steps) {
-                document.getElementById('status').innerText = s;
-                await new Promise(r => setTimeout(r, 1500));
+            } catch(e) {
+                addLog("DECRYPTION ERROR: " + e.message, true);
             }
-            renderFinal(val);
         }
 
-        function renderFinal(inn) {
-            document.getElementById('scan-view').style.display = 'none';
-            document.getElementById('ui-core').classList.add('alert');
-            document.getElementById('title').innerText = '[ RED_STATUS ]';
-            const log = document.getElementById('log'); log.style.display = 'block';
-            const data = osint || { org: "ДАННЫЕ СКРЫТЫ", status: "РИСК: ВЫСОКИЙ" };
-            const lines = [`> TARGET: ${inn}`, `> ORG: ${data.org}`, `> STATUS: CRITICAL`, `> .....................`, `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ`, `> ДЛЯ РЕШЕНИЯ ПРОБЛЕМЫ` ];
-            lines.forEach((t, i) => setTimeout(() => { const d = document.createElement('div'); d.innerText = t; log.appendChild(d); }, i*600));
-        }
+        setTimeout(() => { addLog("INIT DEEP SCAN..."); }, 500);
+        setTimeout(() => { addLog(`TARGET INN: ${inn}`); }, 1500);
+        setTimeout(() => { addLog(`CEO MATCH: ${osint.ceo}`); }, 2500);
+        setTimeout(() => { addLog(`ORG: ${osint.org}`); }, 3500);
+        setTimeout(() => { 
+            addLog(`STATUS: RED`, true); 
+            addLog(`RECOMMENDATION: СВЯЖИТЕСЬ С ИНЖЕНЕРОМ`, true); 
+        }, 4500);
     </script>
 </body>
 </html>
