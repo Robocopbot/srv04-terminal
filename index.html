@@ -3,82 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SRV-04 // TERMINAL</title>
+    <title>SRV-04 // AUDIT</title>
     <style>
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; user-select: none; }
-        .crt::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 100; background-size: 100% 2px, 3px 100%; pointer-events: none; }
-        #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.35; }
-        .container { position: relative; z-index: 20; display: flex; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
-        .terminal { border: 2px solid var(--main); background: rgba(0, 5, 0, 0.95); padding: 30px 20px; width: 100%; max-width: 380px; text-align: center; }
-        .radar { width: 100px; height: 100px; border: 2px solid var(--main); border-radius: 50%; position: relative; margin: 20px auto; overflow: hidden; }
+        body, html { margin: 0; padding: 0; background: #000; color: var(--main); font-family: monospace; overflow: hidden; }
+        #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.3; }
+        .container { position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; height: 100vh; padding: 10px; }
+        .terminal { border: 2px solid var(--main); background: rgba(0, 10, 0, 0.9); padding: 25px; width: 100%; max-width: 350px; text-align: center; }
+        input { background: #001100; border: 1px solid var(--main); color: var(--main); padding: 12px; width: 100%; margin: 15px 0; text-align: center; outline: none; }
+        button { background: var(--main); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; }
+        .radar { width: 80px; height: 80px; border: 2px solid var(--main); border-radius: 50%; position: relative; margin: 15px auto; overflow: hidden; }
         .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 2s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        #log { text-align: left; font-size: 0.8rem; line-height: 1.5; min-height: 150px; }
-        .alert { border-color: var(--alert) !important; color: var(--alert) !important; box-shadow: 0 0 30px rgba(255,0,0,0.3); }
-        button { background: var(--main); color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; font-family: 'Courier New', monospace; }
+        @keyframes spin { from { rotate: 0deg; } to { rotate: 360deg; } }
+        #log { text-align: left; font-size: 0.75rem; margin-top: 15px; max-height: 150px; overflow-y: auto; display:none; }
+        .alert { border-color: var(--alert) !important; color: var(--alert) !important; }
     </style>
 </head>
-<body class="crt">
+<body>
     <canvas id="matrix-bg"></canvas>
     <div class="container">
-        <div id="ui-main" class="terminal">
-            <h1 id="head">[ SYSTEM_SCAN ]</h1>
-            <div id="ui-radar" class="radar"><div class="sweep"></div></div>
-            <div id="status">INITIALIZING...</div>
-            <div id="log" style="display:none;"></div>
-            <button id="btn" style="display:none;" onclick="window.Telegram.WebApp.close()">[ ВЫХОД ]</button>
+        <div id="ui-core" class="terminal">
+            <h2 id="title">[ SRV-MSK-04 ]</h2>
+            
+            <div id="manual-input">
+                <div style="font-size: 0.7rem;">ВВЕДИТЕ ИНН ОБЪЕКТА:</div>
+                <input type="text" id="inn-field" placeholder="10-12 ЦИФР" maxlength="12">
+                <button onclick="startAudit()">ЗАПУСТИТЬ АУДИТ</button>
+            </div>
+
+            <div id="scan-view" style="display:none;">
+                <div class="radar"><div class="sweep"></div></div>
+                <div id="status">INIT...</div>
+            </div>
+
+            <div id="log" class="log-box"></div>
         </div>
     </div>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
     <script>
+        // MATRIX EFFECT
         const canvas = document.getElementById('matrix-bg'), ctx = canvas.getContext('2d');
         let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
-        let letters = '01ABCDEF'.split(''), fontSize = 14, drops = Array(Math.floor(w/fontSize)).fill(1);
-        let matrixClr = '#0F0';
+        let drops = Array(Math.floor(w/15)).fill(1);
         function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,w,h);
-            ctx.fillStyle = matrixClr; ctx.font = fontSize+'px monospace';
+            ctx.fillStyle = '#0F0'; ctx.font = '15px monospace';
             drops.forEach((y, i) => {
-                ctx.fillText(letters[Math.floor(Math.random()*letters.length)], i*fontSize, y*fontSize);
-                if (y*fontSize > h && Math.random() > 0.975) drops[i] = 0; drops[i]++;
+                ctx.fillText(Math.floor(Math.random()*2), i*15, y*15);
+                if (y*15 > h && Math.random() > 0.98) drops[i] = 0; drops[i]++;
             });
         }
         setInterval(draw, 33);
 
-        const params = new URLSearchParams(window.location.search);
-        const q = params.get('q');
-        let osint = { org: "HIDDEN", ceo: "HIDDEN", status: "CRITICAL" };
-        let inn = "UNKNOWN";
+        // DATA PARSING
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q');
+        let osint = null, targetInn = "";
 
         if(q) {
             try {
-                const decoded = atob(q);
-                const p = new URLSearchParams(decoded);
-                inn = p.get('inn');
-                osint = JSON.parse(atob(p.get('p')));
-            } catch(e) {}
+                const decodedQ = atob(q.replace(/-/g, '+').replace(/_/g, '/'));
+                const p = new URLSearchParams(decodedQ);
+                targetInn = p.get('inn');
+                osint = JSON.parse(atob(p.get('p').replace(/-/g, '+').replace(/_/g, '/')));
+                document.getElementById('manual-input').style.display = 'none';
+                startAudit(targetInn);
+            } catch(e) { console.error("DECODE_ERR"); }
         }
 
-        setTimeout(async () => {
-            const steps = ["CONNECTING...", "QUERYING DB...", `CEO_MATCH: ${osint.ceo}`, "FINALIZING..."];
+        async function startAudit(inn) {
+            const val = inn || document.getElementById('inn-field').value;
+            if(!val || val.length < 10) return;
+            
+            document.getElementById('manual-input').style.display = 'none';
+            document.getElementById('scan-view').style.display = 'block';
+            
+            const steps = ["TUNNELING...", "DB_QUERY...", `MATCH: ${osint ? osint.ceo : 'SEARCHING...'}`, "COMPILING..."];
             for(let s of steps) {
                 document.getElementById('status').innerText = s;
                 await new Promise(r => setTimeout(r, 1500));
             }
-            showResult();
-        }, 500);
+            renderFinal(val);
+        }
 
-        function showResult() {
-            matrixClr = '#F00';
-            document.getElementById('ui-radar').style.display = 'none';
-            document.getElementById('status').style.display = 'none';
-            document.getElementById('head').innerText = '[ RED_STATUS ]';
-            document.getElementById('ui-main').classList.add('alert');
+        function renderFinal(inn) {
+            document.getElementById('scan-view').style.display = 'none';
+            document.getElementById('ui-core').classList.add('alert');
+            document.getElementById('title').innerText = '[ RED_STATUS ]';
             const log = document.getElementById('log'); log.style.display = 'block';
-            const lines = [`> TARGET: ${inn}`, `> ORG: ${osint.org}`, `> STATUS: CRITICAL_RED`, `> .....................`, `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ`, `> ЧТОБЫ РЕШИТЬ ПРОБЛЕМУ` ];
+            const data = osint || { org: "ДАННЫЕ СКРЫТЫ", status: "РИСК: ВЫСОКИЙ" };
+            const lines = [`> TARGET: ${inn}`, `> ORG: ${data.org}`, `> STATUS: CRITICAL`, `> .....................`, `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ`, `> ДЛЯ РЕШЕНИЯ ПРОБЛЕМЫ` ];
             lines.forEach((t, i) => setTimeout(() => { const d = document.createElement('div'); d.innerText = t; log.appendChild(d); }, i*600));
-            setTimeout(() => { document.getElementById('btn').style.display = 'block'; }, 4000);
         }
     </script>
 </body>
