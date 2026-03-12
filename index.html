@@ -8,79 +8,67 @@
         :root { --main: #00ff41; --alert: #ff003c; --bg: #000; }
         body, html { margin: 0; padding: 0; background: #000; color: var(--main); font-family: 'Courier New', monospace; overflow: hidden; }
         #matrix-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; opacity: 0.3; }
-        .container { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
+        .container { position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; height: 100vh; padding: 15px; }
         .window { border: 5px solid var(--main); background: rgba(0, 10, 0, 0.98); width: 100%; max-width: 500px; box-shadow: 0 0 60px rgba(0,255,65,0.4); }
-        .win-header { background: var(--main); color: #000; padding: 15px; font-weight: bold; font-size: 1.2rem; display: flex; justify-content: space-between; }
+        .win-header { background: var(--main); color: #000; padding: 15px; font-weight: bold; font-size: 1.2rem; }
         .win-body { padding: 40px; text-align: left; }
-        .huge-title { font-size: 2.2rem; font-weight: bold; letter-spacing: 7px; margin-bottom: 30px; text-align: center; text-shadow: 0 0 20px var(--main); }
-        .log-row { font-size: 1.5rem; margin: 15px 0; border-left: 10px solid var(--main); padding-left: 20px; background: rgba(0,255,65,0.1); line-height: 1.6; }
-        .radar { width: 180px; height: 180px; border: 5px solid var(--main); border-radius: 50%; position: relative; margin: 30px auto; overflow: hidden; }
+        .huge-title { font-size: 2.2rem; font-weight: bold; margin-bottom: 25px; text-align: center; }
+        .log-row { font-size: 1.4rem; margin: 12px 0; border-left: 10px solid var(--main); padding-left: 20px; background: rgba(0,255,65,0.1); }
+        .radar { width: 160px; height: 160px; border: 5px solid var(--main); border-radius: 50%; position: relative; margin: 25px auto; overflow: hidden; }
         .sweep { width: 50%; height: 50%; background: linear-gradient(to right, var(--main), transparent); position: absolute; top: 0; left: 50%; transform-origin: bottom left; animation: spin 1.2s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .btn-panic { background: var(--alert); color: #fff; border: 4px solid #fff; padding: 25px; width: 100%; font-weight: bold; font-size: 1.4rem; margin-top: 30px; cursor: pointer; text-transform: uppercase; }
-        .blink { animation: blink 0.5s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
+        .btn-panic { background: var(--alert); color: #fff; border: 4px solid #fff; padding: 25px; width: 100%; font-weight: bold; font-size: 1.3rem; margin-top: 25px; cursor: pointer; }
     </style>
 </head>
-<body class="crt">
+<body>
     <canvas id="matrix-bg"></canvas>
     <div class="container">
         <div class="window" id="scan-win">
-            <div class="win-header"><span>SRV_SYSTEM_CORE_04</span><span>[ ACTIVE ]</span></div>
+            <div class="win-header">SRV_SYSTEM_CORE_04 [ ACTIVE ]</div>
             <div class="win-body">
                 <div class="radar"><div class="sweep"></div></div>
                 <div id="status" class="huge-title">SCANNING...</div>
             </div>
         </div>
         <div class="window" id="res-win" style="display:none; border-color: var(--alert);">
-            <div class="win-header" style="background: var(--alert); color: #fff;"><span>SECURITY_AUDIT_REPORT</span><span>[ ! ]</span></div>
-            <div class="body">
-                <div class="huge-title blink" style="color: var(--alert);">CRITICAL_RED</div>
+            <div class="win-header" style="background: var(--alert); color: #fff;">SECURITY_ALERT [ ! ]</div>
+            <div class="win-body">
+                <div class="huge-title" style="color: var(--alert);">CRITICAL_RED</div>
                 <div id="log-box"></div>
-                <button class="btn-panic" onclick="window.Telegram.WebApp.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
+                <button class="btn-panic" onclick="window.close()">[ СВЯЗАТЬСЯ С ОПЕРАТОРОМ ]</button>
             </div>
         </div>
     </div>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
+        // MATRIX
         const canvas = document.getElementById('matrix-bg'), ctx = canvas.getContext('2d');
         let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
         let drops = Array(Math.floor(w/15)).fill(1);
-        function draw() {
-            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,w,h);
-            ctx.fillStyle = '#0F0'; ctx.font = '15px monospace';
-            drops.forEach((y, i) => {
-                ctx.fillText(Math.floor(Math.random()*2), i*15, y*15);
-                if (y*15 > h && Math.random() > 0.98) drops[i] = 0; drops[i]++;
-            });
-        }
+        function draw() { ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,w,h); ctx.fillStyle = '#0F0'; ctx.font = '15px monospace'; drops.forEach((y, i) => { ctx.fillText(Math.floor(Math.random()*2), i*15, y*15); if (y*15 > h && Math.random() > 0.98) drops[i] = 0; drops[i]++; }); }
         setInterval(draw, 33);
 
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // PARSING URL DATA
-        const params = new URLSearchParams(window.location.search);
-        const inn = params.get('inn') || "UNKNOWN";
-        const p = params.get('p');
-        let osint = { o: "N/D", c: "HIDDEN", s: "RED_ALERT" };
+        // PARSING START_PARAM
+        const startParam = tg.initDataUnsafe.start_param;
+        let inn = "UNKNOWN", osint = { o: "N/D", c: "HIDDEN", s: "RED_ALERT" };
 
-        if(p) {
+        if(startParam) {
             try {
-                const b64 = p.padEnd(p.length + (4 - p.length % 4) % 4, '=');
+                const [innVal, payload] = startParam.split('_');
+                inn = innVal;
+                const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(payload.length + (4 - payload.length % 4) % 4, '=');
                 osint = JSON.parse(atob(b64));
             } catch(e) { console.error("DECODE_ERR"); }
         }
 
-        const steps = ["CONNECTING...", "READING_DB...", `TARGET: ${osint.o}`, "DONE."];
+        const steps = ["CONNECTING...", `TARGET: ${osint.o}`, "READY."];
         let idx = 0;
         const interval = setInterval(() => {
-            if(idx < steps.length) {
-                document.getElementById('status').innerText = steps[idx++];
-            } else {
-                clearInterval(interval);
-                renderResult();
-            }
+            if(idx < steps.length) { document.getElementById('status').innerText = steps[idx++]; }
+            else { clearInterval(interval); renderResult(); }
         }, 1200);
 
         function renderResult() {
@@ -90,7 +78,7 @@
             const lines = [`> TARGET: ${inn}`, `> ENTITY: ${osint.o}`, `> CEO: ${osint.c}`, `> STATUS: ${osint.s}`, `> СВЯЖИТЕСЬ С ОПЕРАТОРОМ` ];
             lines.forEach((l, i) => setTimeout(() => {
                 const d = document.createElement('div');
-                d.className = 'log-row' + (l.includes('STATUS') ? ' blink' : '');
+                d.className = 'log-row';
                 d.innerText = l;
                 box.appendChild(d);
             }, i * 600));
